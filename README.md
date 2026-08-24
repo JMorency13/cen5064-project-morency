@@ -1,12 +1,20 @@
-# [Your Project Name]
+Event Management System
 
 <!-- CI badge: after Session 4, replace ORG/REPO and the workflow filename, then uncomment:
 ![CI](https://github.com/ORG/REPO/actions/workflows/ci.yml/badge.svg)
 -->
 
-**Student:** [Your Name] · **Course:** CEN 5064 Software Design, Fall 2026 · **Partner:** [@partner-github-username]
+**Student:** [Jonathan Morency] · **Course:** CEN 5064 Software Design, Fall 2026 · **Partner:** [@cmend137]
 
 ## Project (approval paragraph — write this by Sun Aug 30)
+
+Project Name: Event Management System
+This is a web-based application would allow users to create, organize events. It will centralize the event
+information through a dashboard where the user can navigate to specific features of the application. This 
+system will be for event organizers for anything ranging from school to businesses; people who have a large
+amount of events to attend; and administrators school organizations, clubs, or businesses that would need to
+oversee what events are going on and who are attending them. 3 main features of the system would be 1, the home
+page dashboard; 2, the event creation/management feature; and 3, the event notification/update feature.
 
 [One paragraph: What is the system? Who is it for? What are its 3–4 core features?
 This paragraph is your approval request — see the Project Brief, Section 2.]
