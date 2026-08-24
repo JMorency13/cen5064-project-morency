@@ -1,0 +1,35 @@
+# CEN 5064 — CI for the JAVA track
+# In Session 4: copy this file to .github/workflows/ci.yml , commit, push,
+# then open the Actions tab and watch it run. Green = your build and tests pass.
+#
+# Assumes a Maven project (pom.xml at the repo root). Gradle variant at the bottom.
+
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Build and run tests
+        run: mvn -B verify
+
+# --- Gradle instead of Maven? Replace the last step with: ---
+#      - name: Build and run tests
+#        run: ./gradlew build
+# (and change `cache: maven` to `cache: gradle`; make sure gradlew is executable)
