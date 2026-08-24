@@ -1,0 +1,28 @@
+# --- Java ---
+target/
+build/
+*.class
+*.jar
+.gradle/
+
+# --- Python ---
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# --- IDEs ---
+.idea/
+.vscode/
+*.iml
+
+# --- OS noise ---
+.DS_Store
+Thumbs.db
+
+# --- Local secrets/config (never commit credentials) ---
+.env
+*.local
