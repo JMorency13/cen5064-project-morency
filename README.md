@@ -9,7 +9,7 @@ Event Management System
 ## Project (approval paragraph — write this by Sun Aug 30)
 
 Project Name: Event Management System
-This is a web-based application is designed for university student organizations to create, organize, and sing up/RSVP 
+This is a web-based application is designed for university student organizations to create, organize, and RSVP 
 events. It will centralize the event information through a dashboard where the user can view upcoming events, manage 
 existing events and track attendance. This system will be for student organization administrators and members. 3 main 
 features of the system would be 1, the homepage dashboard; 2, the event creation and management feature which will enforce
