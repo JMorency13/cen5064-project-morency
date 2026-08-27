@@ -9,12 +9,14 @@ Event Management System
 ## Project (approval paragraph — write this by Sun Aug 30)
 
 Project Name: Event Management System
-This is a web-based application would allow users to create, organize events. It will centralize the event
-information through a dashboard where the user can navigate to specific features of the application. This 
-system will be for event organizers for anything ranging from school to businesses; people who have a large
-amount of events to attend; and administrators school organizations, clubs, or businesses that would need to
-oversee what events are going on and who are attending them. 3 main features of the system would be 1, the home
-page dashboard; 2, the event creation/management feature; and 3, the event notification/update feature.
+This is a web-based application is designed for university student organizations to create, organize, and sing up/RSVP 
+events. It will centralize the event information through a dashboard where the user can view upcoming events, manage 
+existing events and track attendance. This system will be for student organization administrators and members. 3 main 
+features of the system would be 1, the homepage dashboard; 2, the event creation and management feature which will enforce
+the business rules such as preventing overlapping event schedules and venues, as well as locking events when they reach full 
+capacity; and 3, the event notification feature shown through an in-app banner that will notify organization administrators 
+of any changes to the amount of members currently RSVP'd to an event, and notify organization members of any changes to 
+the time and place of a venue they RSVP'd or if the event had been cancelled.
 
 [One paragraph: What is the system? Who is it for? What are its 3–4 core features?
 This paragraph is your approval request — see the Project Brief, Section 2.]
