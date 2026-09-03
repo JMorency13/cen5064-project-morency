@@ -43,19 +43,20 @@ instructor will follow it literally on conference days.]
 ### C4 — Context & Container (Session 3 studio)
 
 ```mermaid
-%% Replace this placeholder with YOUR system's context diagram.
 flowchart TB
-    user([User]) -->|uses| system[Your System]
-    system -->|stores data in| db[(Database)]
+    user([User (Organizer / Member)]) -->|uses| system[Event Management System]
+    system -->|exposes REST API| api[REST API (Node/Express)]
+    api -->|applies business rules| domain[(Domain Layer)]
+    domain -->|persists events| store[(File store / Database)]
+    system -->|optional UI| ui[Web UI (separate repository / static)]
 ```
 
 ```mermaid
-%% Container view: your containers should match the tier table above.
 flowchart TB
-    subgraph YourSystem [Your System]
-        ui[Web UI / CLI<br/>Presentation] --> api[Application / Service]
-        api --> domain[Domain Model]
-        domain --> db[(Database<br/>Data tier)]
+    subgraph EventManagement [Event Management System]
+        ui[Web UI / Mobile client<br/>Presentation] --> api[REST API (Express)<br/>Service]
+        api --> domain[Domain Model (Event rules)]
+        domain --> db[(JSON file / Database<br/>Data tier)]
     end
 ```
 
