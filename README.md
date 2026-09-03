@@ -44,20 +44,20 @@ instructor will follow it literally on conference days.]
 
 ```mermaid
 flowchart TB
-    user([User (Organizer / Member)]) -->|uses| system[Event Management System]
-    system -->|exposes REST API| api[REST API (Node/Express)]
-    api -->|applies business rules| domain[(Domain Layer)]
-    domain -->|persists events| store[(File store / Database)]
-    system -->|optional UI| ui[Web UI (separate repository / static)]
+  user["User (Organizer / Member)"] -->|uses| system["Event Management System"]
+  system -->|exposes REST API| api["REST API (Node/Express)"]
+  api -->|applies business rules| domain["Domain Layer"]
+  domain -->|persists events| store["File store / Database"]
+  system -->|optional UI| ui["Web UI (separate repository / static)"]
 ```
 
 ```mermaid
 flowchart TB
-    subgraph EventManagement [Event Management System]
-        ui[Web UI / Mobile client<br/>Presentation] --> api[REST API (Express)<br/>Service]
-        api --> domain[Domain Model (Event rules)]
-        domain --> db[(JSON file / Database<br/>Data tier)]
-    end
+  subgraph EventManagement ["Event Management System"]
+    ui["Web UI / Mobile client<br/>Presentation"] --> api["REST API (Express)<br/>Service"]
+    api --> domain["Domain Model (Event rules)"]
+    domain --> db["JSON file / Database<br/>Data tier"]
+  end
 ```
 
 ### UML — Class & Sequence (Session 3 studio)
