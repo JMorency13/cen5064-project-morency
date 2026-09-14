@@ -65,25 +65,33 @@ flowchart TB
 ```mermaid
 %% Class diagram: your 3–4 core domain classes.
 classDiagram
-    class ExampleEntity {
-        -id: Long
-        -name: String
-        +doSomething()
+    class Event {
+        -id: String
+        -title: String
+        -description: String
+        -venue: String
+        -startTime: Date
+        -endTime: Date
+        -capacity: Integer
+        -rsvps: List~String~
+        -locked: Boolean
+        +isFull(): Boolean
+        +overlapsWith(Event): Boolean
     }
 ```
 
 ```mermaid
 %% Sequence diagram: ONE core use case, end to end.
 sequenceDiagram
-    actor U as User
+    actor U as Organizer
     participant UI
-    participant S as Service
-    participant D as Data
-    U->>UI: action
-    UI->>S: request
-    S->>D: save/load
-    D-->>S: result
-    S-->>UI: response
+    participant S as API
+    participant D as Store
+    U->>UI: Fill event form
+    UI->>S: POST /events (event payload)
+    S->>D: store.createEvent(event)
+    D-->>S: savedEvent
+    S-->>UI: 201 Created + savedEvent
     UI-->>U: confirmation
 ```
 
