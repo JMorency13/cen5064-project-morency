@@ -69,21 +69,34 @@ flowchart TB
 ### UML — Class & Sequence (Session 3 studio)
 
 ```mermaid
-%% Class diagram: your 3–4 core domain classes.
-classDiagram
-    class Event {
-        -id: String
-        -title: String
-        -description: String
-        -venue: String
-        -startTime: Date
-        -endTime: Date
-        -capacity: Integer
-        -rsvps: List~String~
-        -locked: Boolean
-        +isFull(): Boolean
-        +overlapsWith(Event): Boolean
-    }
+sequenceDiagram
+    actor O as Organizer
+    actor M as Member
+    participant UI as Web UI
+    participant API as API Server
+    participant D as Domain Rules
+    participant DB as Database
+    participant N as Notification Service
+
+    O->>UI: Create event form
+    UI->>API: POST /events
+    API->>D: validate event details
+    D->>DB: check venue conflicts / capacity
+    DB-->>D: no conflicts
+    D-->>API: valid event
+    API->>DB: save event
+    DB-->>API: saved
+    API-->>UI: event created
+
+    M->>UI: RSVP to event
+    UI->>API: POST /events/:id/rsvp
+    API->>D: addRsvp(userId)
+    D->>DB: check current RSVPs / capacity
+    DB-->>D: status
+    D-->>API: RSVP accepted or locked
+    API->>DB: persist RSVP
+    API->>N: send in-app / email alert
+    API-->>UI: success or full/locked message
 ```
 
 ```mermaid
