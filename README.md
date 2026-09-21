@@ -69,6 +69,54 @@ flowchart TB
 ### UML — Class & Sequence (Session 3 studio)
 
 ```mermaid
+classDiagram
+    class User {
+        -id: String
+        -name: String
+        -email: String
+        -role: String
+        +viewDashboard()
+        +rsvpFor(event: Event)
+    }
+
+    class Organizer {
+        +createEvent()
+        +updateEvent()
+        +cancelEvent()
+        +viewAttendance()
+    }
+
+    class Event {
+        -id: String
+        -title: String
+        -venue: String
+        -startTime: Date
+        -endTime: Date
+        -capacity: Integer
+        -rsvps: List~String~
+        -status: String
+        +isFull(): Boolean
+        +overlapsWith(other: Event): Boolean
+        +addRsvp(userId: String): Boolean
+        +removeRsvp(userId: String)
+        +lockIfFull()
+    }
+
+    class Notification {
+        -id: String
+        -type: String
+        -message: String
+        -timestamp: Date
+        +sendToUser(user: User)
+    }
+
+    User <|-- Organizer
+    User --> Event : views / RSVPs
+    Organizer --> Event : creates / manages
+    Event --> Notification : triggers
+```
+
+```mermaid
 sequenceDiagram
     actor O as Organizer
     actor M as Member
@@ -97,21 +145,6 @@ sequenceDiagram
     API->>DB: persist RSVP
     API->>N: send in-app / email alert
     API-->>UI: success or full/locked message
-```
-
-```mermaid
-%% Sequence diagram: ONE core use case, end to end.
-sequenceDiagram
-    actor U as Organizer
-    participant UI
-    participant S as API
-    participant D as Store
-    U->>UI: Fill event form
-    UI->>S: POST /events (event payload)
-    S->>D: store.createEvent(event)
-    D-->>S: savedEvent
-    S-->>UI: 201 Created + savedEvent
-    UI-->>U: confirmation
 ```
 
 ## Architecture Decision Records
