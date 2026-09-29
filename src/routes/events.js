@@ -1,20 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const eventService = require('../services/eventService');
 const dashboardService = require('../services/dashboardService');
-
-// POST /api/events (Event creation)
-router.post('/', async (req, res) => {
-  const organizerId = req.headers['x-user-id'] || 'organizer-123';
-  const result = await eventService.createEvent(req.body, organizerId);
-
-  if (!result.success) {
-    const status = result.error.includes('already booked') ? 409 : 400;
-    return res.status(status).json(result);
-  }
-
-  return res.status(201).json(result);
-});
 
 // GET /api/events (Dashboard listing with role & upcoming filtering)
 router.get('/', async (req, res) => {
@@ -34,5 +20,12 @@ router.get('/', async (req, res) => {
 
   return res.status(200).json(result);
 });
+
+// TODO: POST /api/events (Event creation) - implement eventService in future PR
+// router.post('/', async (req, res) => {
+//   const organizerId = req.headers['x-user-id'] || 'organizer-123';
+//   const result = await eventService.createEvent(req.body, organizerId);
+//   ...
+// });
 
 module.exports = router;

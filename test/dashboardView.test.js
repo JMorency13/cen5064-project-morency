@@ -1,6 +1,6 @@
 const request = require('supertest');
 const assert = require('assert');
-const app = require('../src/app');
+const app = require('../server');
 const eventStore = require('../src/data/eventStore');
 const { getTodayDateString } = require('../src/services/dashboardService');
 
