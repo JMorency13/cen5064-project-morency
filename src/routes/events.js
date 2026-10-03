@@ -5,8 +5,10 @@ const eventService = require('../services/eventService');
 
 // GET /api/events (Dashboard listing with role & upcoming filtering)
 router.get('/', async (req, res) => {
+  // Extract user context from headers or query params
   const userId = req.headers['x-user-id'] || req.query.userId || 'anonymous-user';
   const userRole = (req.query.role || req.headers['x-user-role'] || 'member').toLowerCase();
+
   const filterApplied = req.query.role ? `role=${req.query.role}` : null;
 
   const result = await dashboardService.getUpcomingEvents(userId, userRole, {
