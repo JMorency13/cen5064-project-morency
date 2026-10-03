@@ -26,3 +26,5 @@ Thumbs.db
 # --- Local secrets/config (never commit credentials) ---
 .env
 *.local
+node_modules/
+package-lock.json
