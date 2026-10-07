@@ -163,3 +163,4 @@ A one-line note per week keeps your commit story readable:
 - Week 2 (Aug 31): ...
 
 ## Working on: Create an event as an organizer 1
+## Working on: Lock full events as an organizer 4
