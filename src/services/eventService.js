@@ -1,35 +1,30 @@
 const { v4: uuidv4 } = require('uuid');
 const eventStore = require('../data/eventStore');
-
-const requiredFields = ['title', 'date', 'time', 'venue', 'capacity'];
+const { detectVenueConflict, validateEventFields } = require('../domain/eventValidation');
 
 async function createEvent(eventData, organizerId) {
-  const missingField = requiredFields.find((field) => {
-    const value = eventData && eventData[field];
-    return value === undefined || value === null || value === '';
-  });
-
-  if (missingField) {
+  const validation = validateEventFields(eventData);
+  if (!validation.isValid) {
+    const missingField = ['title', 'date', 'time', 'venue', 'capacity'].find((field) => (
+      eventData == null || eventData[field] === undefined || eventData[field] === null || eventData[field] === ''
+    ));
     return {
       success: false,
       data: null,
-      error: `Missing required field: ${missingField}`,
+      error: missingField
+        ? `Missing required field: ${missingField}`
+        : validation.errors.join('; '),
       statusCode: 400
     };
   }
 
   const existingEvents = await eventStore.findAll();
-  const hasConflict = existingEvents.some((event) => (
-    event.venue === eventData.venue &&
-    event.date === eventData.date &&
-    event.time === eventData.time
-  ));
-
-  if (hasConflict) {
+  const conflict = detectVenueConflict(eventData, existingEvents);
+  if (conflict.hasConflict) {
     return {
       success: false,
       data: null,
-      error: 'Venue is already booked for this date and time',
+      error: conflict.message,
       statusCode: 409
     };
   }
