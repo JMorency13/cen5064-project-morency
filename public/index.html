@@ -1,0 +1,91 @@
+1<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Event Management System</title>
+  <style>
+    body { font-family: sans-serif; max-width: 760px; margin: 2rem auto; padding: 0 1rem; }
+    label { display: block; margin: .5rem 0; }
+    input { padding: .3rem; width: 100%; box-sizing: border-box; }
+    button { padding: .5rem 1rem; margin-top: .5rem; }
+    #message { margin: 1rem 0; padding: .6rem; border-radius: 4px; display: none; }
+    #message.ok { background: #d9f7d9; display: block; }
+    #message.error { background: #fbdada; display: block; }
+    table { width: 100%; border-collapse: collapse; margin-top: .5rem; }
+    th, td { border-bottom: 1px solid #ccc; padding: .4rem; text-align: left; }
+  </style>
+</head>
+<body>
+  <h1>Event Management System</h1>
+
+  <h2>Create an event (organizer)</h2>
+  <form id="event-form">
+    <label>Organizer ID <input id="organizer" value="organizer-1" required></label>
+    <label>Title <input id="title" required></label>
+    <label>Date <input id="date" type="date" required></label>
+    <label>Start time (events last 1 hour) <input id="time" type="time" required></label>
+    <label>Venue <input id="venue" required></label>
+    <label>Capacity <input id="capacity" type="number" min="1" required></label>
+    <button type="submit">Create event</button>
+  </form>
+  <div id="message" role="status"></div>
+
+  <h2>Upcoming events</h2>
+  <table>
+    <thead><tr><th>Date</th><th>Time</th><th>Title</th><th>Venue</th><th>Capacity</th><th>Status</th></tr></thead>
+    <tbody id="events"></tbody>
+  </table>
+
+  <script>
+    const msg = document.getElementById('message');
+    const tbody = document.getElementById('events');
+
+    function show(text, ok) {
+      msg.textContent = text;
+      msg.className = ok ? 'ok' : 'error';
+    }
+
+    async function loadEvents() {
+      const res = await fetch('/api/events?role=member');
+      const body = await res.json();
+      tbody.replaceChildren();
+      for (const e of body.data.events) {
+        const tr = document.createElement('tr');
+        for (const v of [e.date, e.time, e.title, e.venue, e.capacity, e.status]) {
+          const td = document.createElement('td');
+          td.textContent = v;
+          tr.appendChild(td);
+        }
+        tbody.appendChild(tr);
+      }
+    }
+
+    document.getElementById('event-form').addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      const payload = {
+        title: document.getElementById('title').value,
+        date: document.getElementById('date').value,
+        time: document.getElementById('time').value,
+        venue: document.getElementById('venue').value,
+        capacity: Number(document.getElementById('capacity').value)
+      };
+      const res = await fetch('/api/events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-user-id': document.getElementById('organizer').value },
+        body: JSON.stringify(payload)
+      });
+      const body = await res.json();
+      if (body.success) {
+        show(`Created "${body.data.title}".`, true);
+        ev.target.reset();
+        document.getElementById('organizer').value = 'organizer-1';
+      } else {
+        show(body.error, false);
+      }
+      loadEvents();
+    });
+
+    loadEvents();
+  </script>
+</body>
+</html>

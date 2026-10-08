@@ -32,7 +32,7 @@ npm install
 npm start
 ```
 
-Open http://localhost:3000 (set `PORT` to change the port). Events are saved to `data/events.json` (set `EVENTS_FILE` to change it) and survive restarts.
+Open http://localhost:3000. To use a different port, set `PORT` first: `PORT=4000 npm start` (Mac/Linux), `$env:PORT=4000; npm start` (Windows PowerShell), or `set PORT=4000 && npm start` (Windows cmd). Events are saved to `data/events.json` (set `EVENTS_FILE` to change it) and survive restarts.
 
 Run the tests with `npm test`.
 
