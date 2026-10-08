@@ -23,11 +23,24 @@ This paragraph is your approval request — see the Project Brief, Section 2.]
 
 ## How to run
 
+Requires Node.js 18+ and npm.
+
 ```
-[Exact commands to build and run your system from a clean clone.
-Update this every time the steps change — your partner and your
-instructor will follow it literally on conference days.]
+git clone https://github.com/JMorency13/cen5064-project-morency.git
+cd cen5064-project-morency
+npm install
+npm start
 ```
+
+Open http://localhost:3000 (set `PORT` to change the port). Events are saved to `data/events.json` (set `EVENTS_FILE` to change it) and survive restarts.
+
+Run the tests with `npm test`.
+
+### Working slice: create an event with venue-conflict prevention
+
+1. In the form, enter a title, a future date, a start time, a venue and a capacity, then click **Create event**. The event appears in the "Upcoming events" table.
+2. Create a second event with the same venue and date at an overlapping time (events last 1 hour, so 14:00 and 14:30 overlap). It is rejected with a message naming the conflicting event, and nothing is saved.
+3. Stop the server (Ctrl+C) and run `npm start` again. The first event is still listed.
 
 ## Architecture
 
