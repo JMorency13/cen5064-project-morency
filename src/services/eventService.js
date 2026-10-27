@@ -1,35 +1,32 @@
 const { v4: uuidv4 } = require('uuid');
-const eventStore = require('../data/eventStore');
 const { detectVenueConflict, validateEventFields } = require('../domain/eventValidation');
 
-async function createEvent(eventData, organizerId) {
-  const validation = validateEventFields(eventData);
-  if (!validation.isValid) {
-    const missingField = ['title', 'date', 'time', 'venue', 'capacity'].find((field) => (
-      eventData == null || eventData[field] === undefined || eventData[field] === null || eventData[field] === ''
-    ));
-    return {
-      success: false,
-      data: null,
-      error: missingField
-        ? `Missing required field: ${missingField}`
-        : validation.errors.join('; '),
-      statusCode: 400
-    };
-  }
+function buildValidationError(eventData, validation) {
+  const missingField = ['title', 'date', 'time', 'venue', 'capacity'].find((field) => (
+    eventData == null || eventData[field] === undefined || eventData[field] === null || eventData[field] === ''
+  ));
 
-  const existingEvents = await eventStore.findAll();
-  const conflict = detectVenueConflict(eventData, existingEvents);
-  if (conflict.hasConflict) {
-    return {
-      success: false,
-      data: null,
-      error: conflict.message,
-      statusCode: 409
-    };
-  }
+  return {
+    success: false,
+    data: null,
+    error: missingField
+      ? `Missing required field: ${missingField}`
+      : validation.errors.join('; '),
+    statusCode: 400
+  };
+}
 
-  const event = {
+function buildConflictError(conflict) {
+  return {
+    success: false,
+    data: null,
+    error: conflict.message,
+    statusCode: 409
+  };
+}
+
+function buildEventPayload(eventData, organizerId) {
+  return {
     id: uuidv4(),
     title: eventData.title,
     date: eventData.date,
@@ -41,9 +38,9 @@ async function createEvent(eventData, organizerId) {
     rsvps: [],
     status: 'open'
   };
+}
 
-  await eventStore.save(event);
-
+function buildSuccessResponse(event) {
   return {
     success: true,
     data: event,
@@ -52,4 +49,48 @@ async function createEvent(eventData, organizerId) {
   };
 }
 
-module.exports = { createEvent };
+function createEventService({ eventStore }) {
+  if (!eventStore || typeof eventStore.findAll !== 'function' || typeof eventStore.save !== 'function') {
+    throw new Error('createEventService requires an eventStore with findAll() and save()');
+  }
+
+  async function validateAndCheckConflicts(eventData) {
+    const validation = validateEventFields(eventData);
+    if (!validation.isValid) {
+      return buildValidationError(eventData, validation);
+    }
+
+    const existingEvents = await eventStore.findAll();
+    const conflict = detectVenueConflict(eventData, existingEvents);
+    if (conflict.hasConflict) {
+      return buildConflictError(conflict);
+    }
+
+    return null;
+  }
+
+  async function createEvent(eventData, organizerId) {
+    const precheckError = await validateAndCheckConflicts(eventData);
+    if (precheckError) {
+      return precheckError;
+    }
+
+    const event = buildEventPayload(eventData, organizerId);
+    await eventStore.save(event);
+
+    return buildSuccessResponse(event);
+  }
+
+  return {
+    createEvent,
+    validateAndCheckConflicts
+  };
+}
+
+module.exports = {
+  createEventService,
+  buildValidationError,
+  buildConflictError,
+  buildEventPayload,
+  buildSuccessResponse
+};

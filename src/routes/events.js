@@ -1,7 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const dashboardService = require('../services/dashboardService');
-const eventService = require('../services/eventService');
+
+const eventStore = require('../data/eventStore');
+const { createDashboardService } = require('../services/dashboardService');
+const { createEventService } = require('../services/eventService');
+
+const dashboardService = createDashboardService({ eventStore });
+const eventService = createEventService({ eventStore });
 
 // GET /api/events (Dashboard listing with role & upcoming filtering)
 router.get('/', async (req, res) => {
