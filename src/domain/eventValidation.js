@@ -43,14 +43,16 @@ function timesOverlap(start1, end1, start2, end2) {
  * Checks for overlapping time ranges, not just exact time matches.
  * Ignores cancelled events (they don't block the venue).
  *
- * @param {Object} proposedEvent - The event being created
- *   Must have: { date, time, venue }
- * @param {Array<Object>} existingEvents - All events currently in the store
+ * @param {Object} proposedEvent - The event being created or updated
+ * @param {Array<Object>} existingEvents - All other events currently in the store
  * @returns {Object} Conflict detection result
- *   { hasConflict: boolean, conflictingEvent?: Object, message?: string }
  */
 function detectVenueConflict(proposedEvent, existingEvents) {
-  const { date: proposedDate, time: proposedTime, venue: proposedVenue } = proposedEvent;
+  const {
+    date: proposedDate,
+    time: proposedTime,
+    venue: proposedVenue
+  } = proposedEvent;
 
   if (!proposedDate || !proposedTime || !proposedVenue) {
     return { hasConflict: false };
@@ -70,7 +72,12 @@ function detectVenueConflict(proposedEvent, existingEvents) {
     const existingStartTime = timeToMinutes(existingEvent.time);
     const existingEndTime = getEndTimeInMinutes(existingEvent.time);
 
-    if (timesOverlap(proposedStartTime, proposedEndTime, existingStartTime, existingEndTime)) {
+    if (timesOverlap(
+      proposedStartTime,
+      proposedEndTime,
+      existingStartTime,
+      existingEndTime
+    )) {
       return {
         hasConflict: true,
         conflictingEvent: existingEvent,
@@ -86,7 +93,6 @@ function detectVenueConflict(proposedEvent, existingEvents) {
  * Validates all required event fields.
  * @param {Object} eventData - Event data to validate
  * @returns {Object} Validation result
- *   { isValid: boolean, errors?: Array<string> }
  */
 function validateEventFields(eventData) {
   const data = eventData || {};
@@ -108,8 +114,12 @@ function validateEventFields(eventData) {
     errors.push('Venue is required and must be a non-empty string');
   }
 
-  if (typeof data.capacity !== 'number' || data.capacity <= 0) {
+  if (!Number.isInteger(data.capacity) || data.capacity <= 0) {
     errors.push('Capacity is required and must be a positive integer');
+  }
+
+  if (data.description !== undefined && typeof data.description !== 'string') {
+    errors.push('Description must be a string');
   }
 
   return {

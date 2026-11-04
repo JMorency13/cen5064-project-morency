@@ -1,4 +1,4 @@
-1<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -6,7 +6,7 @@
   <style>
     body { font-family: sans-serif; max-width: 760px; margin: 2rem auto; padding: 0 1rem; }
     label { display: block; margin: .5rem 0; }
-    input { padding: .3rem; width: 100%; box-sizing: border-box; }
+    input, textarea { padding: .3rem; width: 100%; box-sizing: border-box; }
     button { padding: .5rem 1rem; margin-top: .5rem; }
     #message { margin: 1rem 0; padding: .6rem; border-radius: 4px; display: none; }
     #message.ok { background: #d9f7d9; display: block; }
@@ -18,27 +18,47 @@
 <body>
   <h1>Event Management System</h1>
 
-  <h2>Create an event (organizer)</h2>
+  <h2>Manage events (organizer)</h2>
   <form id="event-form">
     <label>Organizer ID <input id="organizer" value="organizer-1" required></label>
     <label>Title <input id="title" required></label>
     <label>Date <input id="date" type="date" required></label>
     <label>Start time (events last 1 hour) <input id="time" type="time" required></label>
     <label>Venue <input id="venue" required></label>
+    <label>Description <textarea id="description"></textarea></label>
     <label>Capacity <input id="capacity" type="number" min="1" required></label>
     <button type="submit">Create event</button>
+    <button id="cancel-edit" type="button" hidden>Cancel edit</button>
   </form>
   <div id="message" role="status"></div>
 
-  <h2>Upcoming events</h2>
+  <h2>Your upcoming events</h2>
   <table>
-    <thead><tr><th>Date</th><th>Time</th><th>Title</th><th>Venue</th><th>Capacity</th><th>Status</th></tr></thead>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Time</th>
+        <th>Title</th>
+        <th>Venue</th>
+        <th>Capacity</th>
+        <th>Status</th>
+        <th></th>
+      </tr>
+    </thead>
     <tbody id="events"></tbody>
   </table>
+
+  <h2>Member notifications</h2>
+  <label>Member ID <input id="member-id" value="member-1"></label>
+  <button id="load-notifications" type="button">Load notifications</button>
+  <ul id="notifications"></ul>
 
   <script>
     const msg = document.getElementById('message');
     const tbody = document.getElementById('events');
+    const form = document.getElementById('event-form');
+    const organizerInput = document.getElementById('organizer');
+    let editingEventId = null;
 
     function show(text, ok) {
       msg.textContent = text;
@@ -46,43 +66,120 @@
     }
 
     async function loadEvents() {
-      const res = await fetch('/api/events?role=member');
+      const res = await fetch('/api/events?role=organizer', {
+        headers: { 'x-user-id': organizerInput.value }
+      });
       const body = await res.json();
       tbody.replaceChildren();
-      for (const e of body.data.events) {
-        const tr = document.createElement('tr');
-        for (const v of [e.date, e.time, e.title, e.venue, e.capacity, e.status]) {
-          const td = document.createElement('td');
-          td.textContent = v;
-          tr.appendChild(td);
+
+      for (const event of body.data.events) {
+        const row = document.createElement('tr');
+
+        for (const value of [
+          event.date,
+          event.time,
+          event.title,
+          event.venue,
+          event.capacity,
+          event.status
+        ]) {
+          const cell = document.createElement('td');
+          cell.textContent = value;
+          row.appendChild(cell);
         }
-        tbody.appendChild(tr);
+
+        const actionCell = document.createElement('td');
+        const editButton = document.createElement('button');
+        editButton.type = 'button';
+        editButton.textContent = 'Edit';
+        editButton.addEventListener('click', () => {
+          editingEventId = event.id;
+
+          for (const field of [
+            'title',
+            'date',
+            'time',
+            'venue',
+            'description',
+            'capacity'
+          ]) {
+            document.getElementById(field).value = event[field] || '';
+          }
+
+          form.querySelector('button[type="submit"]').textContent = 'Update event';
+          document.getElementById('cancel-edit').hidden = false;
+        });
+
+        actionCell.appendChild(editButton);
+        row.appendChild(actionCell);
+        tbody.appendChild(row);
       }
     }
 
-    document.getElementById('event-form').addEventListener('submit', async (ev) => {
-      ev.preventDefault();
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
       const payload = {
         title: document.getElementById('title').value,
         date: document.getElementById('date').value,
         time: document.getElementById('time').value,
         venue: document.getElementById('venue').value,
+        description: document.getElementById('description').value,
         capacity: Number(document.getElementById('capacity').value)
       };
-      const res = await fetch('/api/events', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-user-id': document.getElementById('organizer').value },
-        body: JSON.stringify(payload)
-      });
-      const body = await res.json();
+
+      const response = await fetch(
+        editingEventId
+          ? `/api/events/${encodeURIComponent(editingEventId)}`
+          : '/api/events',
+        {
+          method: editingEventId ? 'PUT' : 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-user-id': organizerInput.value
+          },
+          body: JSON.stringify(payload)
+        }
+      );
+
+      const body = await response.json();
+
       if (body.success) {
-        show(`Created "${body.data.title}".`, true);
-        ev.target.reset();
-        document.getElementById('organizer').value = 'organizer-1';
+        const action = editingEventId ? 'Updated' : 'Created';
+        show(`${action} "${body.data.title}".`, true);
+        form.reset();
+        organizerInput.value = 'organizer-1';
+        editingEventId = null;
+        form.querySelector('button[type="submit"]').textContent = 'Create event';
+        document.getElementById('cancel-edit').hidden = true;
       } else {
         show(body.error, false);
       }
+
       loadEvents();
+    });
+
+    document.getElementById('cancel-edit').addEventListener('click', () => {
+      editingEventId = null;
+      form.reset();
+      organizerInput.value = 'organizer-1';
+      form.querySelector('button[type="submit"]').textContent = 'Create event';
+      document.getElementById('cancel-edit').hidden = true;
+    });
+
+    document.getElementById('load-notifications').addEventListener('click', async () => {
+      const response = await fetch('/api/events/notifications', {
+        headers: { 'x-user-id': document.getElementById('member-id').value }
+      });
+      const body = await response.json();
+      const list = document.getElementById('notifications');
+      list.replaceChildren();
+
+      for (const notification of body.data) {
+        const item = document.createElement('li');
+        item.textContent = `${notification.message} (${notification.createdAt})`;
+        list.appendChild(item);
+      }
     });
 
     loadEvents();
