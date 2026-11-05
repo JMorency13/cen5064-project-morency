@@ -1,9 +1,15 @@
 const { v4: uuidv4 } = require('uuid');
-const { detectVenueConflict, validateEventFields } = require('../domain/eventValidation');
+const {
+  detectVenueConflict,
+  validateEventFields
+} = require('../domain/eventValidation');
 
 function buildValidationError(eventData, validation) {
   const missingField = ['title', 'date', 'time', 'venue', 'capacity'].find((field) => (
-    eventData == null || eventData[field] === undefined || eventData[field] === null || eventData[field] === ''
+    eventData == null
+    || eventData[field] === undefined
+    || eventData[field] === null
+    || eventData[field] === ''
   ));
 
   return {
@@ -25,6 +31,15 @@ function buildConflictError(conflict) {
   };
 }
 
+function buildErrorResponse(error, statusCode) {
+  return {
+    success: false,
+    data: null,
+    error,
+    statusCode
+  };
+}
+
 function buildEventPayload(eventData, organizerId) {
   return {
     id: uuidv4(),
@@ -32,6 +47,7 @@ function buildEventPayload(eventData, organizerId) {
     date: eventData.date,
     time: eventData.time,
     venue: eventData.venue,
+    description: eventData.description || '',
     capacity: eventData.capacity,
     createdBy: organizerId,
     createdAt: new Date().toISOString(),
@@ -49,9 +65,21 @@ function buildSuccessResponse(event) {
   };
 }
 
+function toPublicEvent(event) {
+  const { notifications, ...publicEvent } = event;
+  return publicEvent;
+}
+
 function createEventService({ eventStore }) {
-  if (!eventStore || typeof eventStore.findAll !== 'function' || typeof eventStore.save !== 'function') {
-    throw new Error('createEventService requires an eventStore with findAll() and save()');
+  if (
+    !eventStore
+    || typeof eventStore.findAll !== 'function'
+    || typeof eventStore.save !== 'function'
+    || typeof eventStore.update !== 'function'
+  ) {
+    throw new Error(
+      'createEventService requires an eventStore with findAll(), save(), and update()'
+    );
   }
 
   async function validateAndCheckConflicts(eventData) {
@@ -81,8 +109,117 @@ function createEventService({ eventStore }) {
     return buildSuccessResponse(event);
   }
 
+  async function updateEvent(eventId, updates, organizerId) {
+    if (!organizerId) {
+      return buildErrorResponse('Organizer ID is required', 401);
+    }
+
+    if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
+      return buildErrorResponse('Event updates must be a JSON object', 400);
+    }
+
+    const editableFields = [
+      'title',
+      'date',
+      'time',
+      'venue',
+      'capacity',
+      'description'
+    ];
+    const updateFields = Object.keys(updates);
+
+    if (
+      updateFields.length === 0
+      || updateFields.some((field) => !editableFields.includes(field))
+    ) {
+      return buildErrorResponse(
+        'Provide at least one valid event detail to update',
+        400
+      );
+    }
+
+    const events = await eventStore.findAll();
+    const event = events.find((savedEvent) => savedEvent.id === eventId);
+
+    if (!event) {
+      return buildErrorResponse('Event not found', 404);
+    }
+
+    if (event.createdBy !== organizerId) {
+      return buildErrorResponse(
+        'Only the event organizer can update this event',
+        403
+      );
+    }
+
+    const updatedEvent = { ...event, ...updates };
+    const validation = validateEventFields(updatedEvent);
+
+    if (!validation.isValid) {
+      return buildValidationError(updatedEvent, validation);
+    }
+
+    const otherEvents = events.filter((savedEvent) => savedEvent.id !== eventId);
+    const conflict = detectVenueConflict(updatedEvent, otherEvents);
+
+    if (conflict.hasConflict) {
+      return buildConflictError(conflict);
+    }
+
+    const changedFields = editableFields.filter(
+      (field) => event[field] !== updatedEvent[field]
+    );
+    updatedEvent.updatedAt = new Date().toISOString();
+    updatedEvent.notifications = [...(event.notifications || [])];
+
+    if (changedFields.length > 0) {
+      for (const recipientId of event.rsvps || []) {
+        updatedEvent.notifications.push({
+          id: uuidv4(),
+          type: 'event_updated',
+          eventId,
+          recipientId,
+          message: `"${updatedEvent.title}" details changed: ${changedFields.join(', ')}.`,
+          changedFields: [...changedFields],
+          createdAt: updatedEvent.updatedAt
+        });
+      }
+    }
+
+    const savedEvent = await eventStore.update(updatedEvent);
+
+    return {
+      success: true,
+      data: toPublicEvent(savedEvent),
+      error: null,
+      statusCode: 200
+    };
+  }
+
+  async function getNotificationsForUser(userId) {
+    if (!userId) {
+      return buildErrorResponse('User ID is required', 400);
+    }
+
+    const events = await eventStore.findAll();
+    const notifications = events.flatMap((event) => (
+      (event.notifications || []).filter(
+        (notification) => notification.recipientId === userId
+      )
+    ));
+
+    return {
+      success: true,
+      data: notifications,
+      error: null,
+      statusCode: 200
+    };
+  }
+
   return {
     createEvent,
+    updateEvent,
+    getNotificationsForUser,
     validateAndCheckConflicts
   };
 }
@@ -92,5 +229,7 @@ module.exports = {
   buildValidationError,
   buildConflictError,
   buildEventPayload,
-  buildSuccessResponse
+  buildSuccessResponse,
+  buildErrorResponse,
+  toPublicEvent
 };
