@@ -128,9 +128,45 @@ function validateEventFields(eventData) {
   };
 }
 
+function validateRsvp(event, memberId) {
+  const rsvps = Array.isArray(event.rsvps) ? event.rsvps : [];
+
+  if (rsvps.includes(memberId)) {
+    return {
+      isValid: true,
+      alreadyRsvpd: true,
+      rsvps,
+      status: event.status
+    };
+  }
+
+  if (event.status !== 'open') {
+    return {
+      isValid: false,
+      error: 'This event is not open for RSVP'
+    };
+  }
+
+  if (rsvps.length >= event.capacity) {
+    return {
+      isValid: false,
+      error: 'This event is at capacity'
+    };
+  }
+
+  const updatedRsvps = [...rsvps, memberId];
+  return {
+    isValid: true,
+    alreadyRsvpd: false,
+    rsvps: updatedRsvps,
+    status: updatedRsvps.length >= event.capacity ? 'full' : 'open'
+  };
+}
+
 module.exports = {
   detectVenueConflict,
   validateEventFields,
+  validateRsvp,
   timeToMinutes,
   getEndTimeInMinutes,
   timesOverlap

@@ -1,7 +1,8 @@
 const { v4: uuidv4 } = require('uuid');
 const {
   detectVenueConflict,
-  validateEventFields
+  validateEventFields,
+  validateRsvp
 } = require('../domain/eventValidation');
 
 function buildValidationError(eventData, validation) {
@@ -68,6 +69,15 @@ function buildSuccessResponse(event) {
 function toPublicEvent(event) {
   const { notifications, ...publicEvent } = event;
   return publicEvent;
+}
+
+function buildRsvpSuccessResponse(event, statusCode) {
+  return {
+    success: true,
+    data: toPublicEvent(event),
+    error: null,
+    statusCode
+  };
 }
 
 function createEventService({ eventStore }) {
@@ -159,6 +169,18 @@ function createEventService({ eventStore }) {
       return buildValidationError(updatedEvent, validation);
     }
 
+    const rsvpCount = Array.isArray(event.rsvps) ? event.rsvps.length : 0;
+    if (updatedEvent.capacity < rsvpCount) {
+      return buildErrorResponse(
+        'Capacity cannot be lower than the current RSVP count',
+        409
+      );
+    }
+
+    if (updatedEvent.status !== 'cancelled') {
+      updatedEvent.status = rsvpCount >= updatedEvent.capacity ? 'full' : 'open';
+    }
+
     const otherEvents = events.filter((savedEvent) => savedEvent.id !== eventId);
     const conflict = detectVenueConflict(updatedEvent, otherEvents);
 
@@ -196,6 +218,41 @@ function createEventService({ eventStore }) {
     };
   }
 
+  async function rsvpForEvent(eventId, memberId) {
+    if (!memberId) {
+      return buildErrorResponse('Member ID is required', 401);
+    }
+
+    const events = await eventStore.findAll();
+    const event = events.find((savedEvent) => savedEvent.id === eventId);
+
+    if (!event) {
+      return buildErrorResponse('Event not found', 404);
+    }
+
+    const rsvp = validateRsvp(event, memberId);
+    if (!rsvp.isValid) {
+      return buildErrorResponse(rsvp.error, 409);
+    }
+
+    if (rsvp.alreadyRsvpd) {
+      return buildRsvpSuccessResponse(event, 200);
+    }
+
+    const updatedEvent = {
+      ...event,
+      rsvps: rsvp.rsvps,
+      status: rsvp.status
+    };
+    const savedEvent = await eventStore.update(updatedEvent);
+
+    if (!savedEvent) {
+      return buildErrorResponse('Event not found', 404);
+    }
+
+    return buildRsvpSuccessResponse(savedEvent, 201);
+  }
+
   async function getNotificationsForUser(userId) {
     if (!userId) {
       return buildErrorResponse('User ID is required', 400);
@@ -219,6 +276,7 @@ function createEventService({ eventStore }) {
   return {
     createEvent,
     updateEvent,
+    rsvpForEvent,
     getNotificationsForUser,
     validateAndCheckConflicts
   };
@@ -231,5 +289,6 @@ module.exports = {
   buildEventPayload,
   buildSuccessResponse,
   buildErrorResponse,
+  buildRsvpSuccessResponse,
   toPublicEvent
 };

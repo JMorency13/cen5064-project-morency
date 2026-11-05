@@ -37,11 +37,25 @@ Open http://localhost:3000. To use a different port, set `PORT` first: `PORT=400
 
 Run the tests with `npm test`.
 
+### Login (local demo identity provider)
+
+The demo runs without a university SSO service. Sign in with one of these local accounts:
+
+| Role | Email | Password |
+|------|-------|----------|
+| Organizer | `organizer@example.edu` | `organizer-demo` |
+| Member | `member@example.edu` | `member-demo` |
+
+Set `DEMO_ORGANIZER_PASSWORD` and/or `DEMO_MEMBER_PASSWORD` before starting the server to override the demo passwords. Both variables are required when `NODE_ENV=production` so the demo defaults cannot be used there. Password hashes and login sessions are held in memory; sessions expire after eight hours and are cleared on restart. The demo provider is an adapter boundary for a future university identity-provider integration, not production authentication.
+
+Organizer accounts can create and update their own events. Member accounts can RSVP; the event changes to `full` when its capacity is reached. The API requires a bearer token from `/api/auth/login` and determines identity and role from that token rather than request headers or query parameters.
+
 ### Working slice: create an event with venue-conflict prevention
 
-1. In the form, enter a title, a future date, a start time, a venue and a capacity, then click **Create event**. The event appears in the "Upcoming events" table.
+1. Sign in with the organizer demo account, enter a title, a future date, a start time, a venue and a capacity, then click **Create event**. The event appears in the "Upcoming events" table.
 2. Create a second event with the same venue and date at an overlapping time (events last 1 hour, so 14:00 and 14:30 overlap). It is rejected with a message naming the conflicting event, and nothing is saved.
 3. Stop the server (Ctrl+C) and run `npm start` again. The first event is still listed.
+4. Sign in with the member demo account and RSVP to an open upcoming event.
 
 ## Architecture
 
@@ -49,17 +63,17 @@ Run the tests with `npm test`.
 
 | Tier | Responsibilities in THIS system |
 |------|--------------------------------|
-| Presentation | [what your UI layer does] |
-| Service | [what your use-case/orchestration layer does] |
-| Domain | [your entities and business rules] |
-| Data | [how and where data is stored] |
+| Presentation | The browser login form and role-specific event dashboard in `public/index.html`. |
+| Service | API orchestration, credential verification and session management, event creation/update, RSVP, and dashboard queries. |
+| Domain | Pure event validation, venue-conflict detection, and RSVP capacity/event-state rules. |
+| Data | The event repository persists `data/events.json`; the local demo user store keeps salted password hashes in memory. |
 
 ### C4 — Context & Container (Session 3 studio)
 
 ```mermaid
 flowchart TB
   user["User (Organizer / Member)"] -->|uses| system["Event Management System"]
-  system -->|authenticates via| auth["University SSO / Identity Provider"]
+  system -->|authenticates via| auth["Local demo identity provider<br/>(replaceable by University SSO)"]
   system -->|sends email via| email["Email Service (SMTP / 3rd-party)"]
   system -->|optionally syncs with| calendar["Calendar Service (Google / Outlook)"]
 ```
@@ -75,7 +89,7 @@ flowchart TB
     api -->|pushes realtime| realtime["Realtime Notifications<br/>(WebSocket / SSE)"]
   end
 
-  api -->|auth checks via| auth["University SSO / Identity Provider"]
+  api -->|auth checks via| auth["Local demo identity provider<br/>(replaceable by University SSO)"]
   api -->|sends email via| email["Email Service (external)"]
   api -->|optionally writes to| calendar["Calendar Service (external)"]
 ```
