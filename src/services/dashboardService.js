@@ -49,17 +49,18 @@ function sortEventsChronologically(events) {
 }
 
 function sanitizeEvents(events) {
-  return events.map((e) => ({
-    id: e.id,
-    title: e.title,
-    date: e.date,
-    time: e.time,
-    venue: e.venue,
-    capacity: e.capacity,
-    createdBy: e.createdBy,
-    createdAt: e.createdAt,
-    rsvps: e.rsvps,
-    status: e.status
+  return events.map((event) => ({
+    id: event.id,
+    title: event.title,
+    date: event.date,
+    time: event.time,
+    venue: event.venue,
+    description: event.description || '',
+    capacity: event.capacity,
+    createdBy: event.createdBy,
+    createdAt: event.createdAt,
+    rsvps: event.rsvps,
+    status: event.status
   }));
 }
 
@@ -95,11 +96,19 @@ function createDashboardService({ eventStore }) {
       const allEvents = await eventStore.findAll();
 
       const upcomingEvents = filterUpcomingEvents(allEvents, today);
-      const roleFilteredEvents = filterEventsByRole(upcomingEvents, userId, userRole);
+      const roleFilteredEvents = filterEventsByRole(
+        upcomingEvents,
+        userId,
+        userRole
+      );
       const sortedEvents = sortEventsChronologically(roleFilteredEvents);
       const sanitizedEvents = sanitizeEvents(sortedEvents);
 
-      return buildSuccessResponse(sanitizedEvents, userRole, options.filterApplied);
+      return buildSuccessResponse(
+        sanitizedEvents,
+        userRole,
+        options.filterApplied
+      );
     } catch (err) {
       return buildErrorResponse(err);
     }

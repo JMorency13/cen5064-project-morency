@@ -29,6 +29,15 @@ async function save(event) {
   return event;
 }
 
+async function update(event) {
+  const index = events.findIndex((savedEvent) => savedEvent.id === event.id);
+  if (index === -1) return null;
+
+  events[index] = event;
+  persist();
+  return event;
+}
+
 async function clear() {
   events.length = 0;
   persist();
@@ -38,5 +47,6 @@ module.exports = {
   init,
   findAll,
   save,
+  update,
   clear
 };
