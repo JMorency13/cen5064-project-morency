@@ -4,25 +4,25 @@ const router = express.Router();
 const eventStore = require('../data/eventStore');
 const { createDashboardService } = require('../services/dashboardService');
 const { createEventService } = require('../services/eventService');
+const { authenticate, authorize } = require('../middleware/auth');
 
 const dashboardService = createDashboardService({ eventStore });
 const eventService = createEventService({ eventStore });
 
 // GET /api/events/notifications (Notifications for the signed-in member)
-router.get('/notifications', async (req, res) => {
-  const userId = req.headers['x-user-id'];
+router.get('/notifications', authenticate, async (req, res) => {
+  const userId = req.user.id;
   const result = await eventService.getNotificationsForUser(userId);
   return res.status(result.statusCode).json(result);
 });
 
 // GET /api/events (Dashboard listing with role & upcoming filtering)
-router.get('/', async (req, res) => {
-  const userId = req.headers['x-user-id'] || req.query.userId || 'anonymous-user';
-  const userRole = (req.query.role || req.headers['x-user-role'] || 'member').toLowerCase();
-  const filterApplied = req.query.role ? `role=${req.query.role}` : null;
+router.get('/', authenticate, async (req, res) => {
+  const userId = req.user.id;
+  const userRole = req.user.role;
 
   const result = await dashboardService.getUpcomingEvents(userId, userRole, {
-    filterApplied
+    filterApplied: null
   });
 
   if (!result.success) {
@@ -33,8 +33,8 @@ router.get('/', async (req, res) => {
 });
 
 // POST /api/events (Create event)
-router.post('/', async (req, res) => {
-  const organizerId = req.headers['x-user-id'];
+router.post('/', authenticate, authorize('organizer'), async (req, res) => {
+  const organizerId = req.user.id;
   const result = await eventService.createEvent(req.body, organizerId);
 
   const responsePayload = {
@@ -47,14 +47,23 @@ router.post('/', async (req, res) => {
 });
 
 // PUT /api/events/:id (Organizer updates event details)
-router.put('/:id', async (req, res) => {
-  const organizerId = req.headers['x-user-id'];
+router.put('/:id', authenticate, authorize('organizer'), async (req, res) => {
+  const organizerId = req.user.id;
   const result = await eventService.updateEvent(
     req.params.id,
     req.body,
     organizerId
   );
 
+  return res.status(result.statusCode).json({
+    success: result.success,
+    data: result.data,
+    error: result.error
+  });
+});
+
+router.post('/:id/rsvp', authenticate, authorize('member'), async (req, res) => {
+  const result = await eventService.rsvpForEvent(req.params.id, req.user.id);
   return res.status(result.statusCode).json({
     success: result.success,
     data: result.data,

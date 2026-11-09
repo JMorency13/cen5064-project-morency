@@ -2,16 +2,22 @@ const request = require('supertest');
 const assert = require('assert');
 const app = require('../server');
 const eventStore = require('../src/data/eventStore');
+const { authorizationFor } = require('./helpers/auth');
 
 describe('Event Creation - POST /api/events', () => {
+  let organizerAuthorization;
+  let memberAuthorization;
+
   beforeEach(async () => {
     await eventStore.clear();
+    organizerAuthorization = await authorizationFor('organizer');
+    memberAuthorization = await authorizationFor('member');
   });
 
   it('should create a valid event and return 201', async () => {
     const res = await request(app)
       .post('/api/events')
-      .set('x-user-id', 'organizer-123')
+      .set('Authorization', organizerAuthorization)
       .send({
         title: 'Campus Hack Night',
         date: '2099-05-10',
@@ -24,14 +30,13 @@ describe('Event Creation - POST /api/events', () => {
     assert.strictEqual(res.body.success, true);
     assert.strictEqual(res.body.error, null);
     assert.ok(res.body.data.id);
-    assert.strictEqual(res.body.data.createdBy, 'organizer-123');
+    assert.strictEqual(res.body.data.createdBy, 'organizer-1');
     assert.strictEqual(res.body.data.status, 'open');
     assert.deepStrictEqual(res.body.data.rsvps, []);
 
     const dashboardRes = await request(app)
       .get('/api/events')
-      .set('x-user-id', 'member-123')
-      .set('x-user-role', 'member')
+      .set('Authorization', memberAuthorization)
       .expect(200);
 
     const eventIds = dashboardRes.body.data.events.map((event) => event.id);
@@ -41,7 +46,7 @@ describe('Event Creation - POST /api/events', () => {
   it('should reject missing required fields', async () => {
     const res = await request(app)
       .post('/api/events')
-      .set('x-user-id', 'organizer-123')
+      .set('Authorization', organizerAuthorization)
       .send({
         title: 'Missing Fields',
         date: '2099-05-10',
@@ -69,7 +74,7 @@ describe('Event Creation - POST /api/events', () => {
 
     const res = await request(app)
       .post('/api/events')
-      .set('x-user-id', 'organizer-123')
+      .set('Authorization', organizerAuthorization)
       .send({
         title: 'Conflict Event',
         date: '2099-05-10',

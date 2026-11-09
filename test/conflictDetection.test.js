@@ -3,14 +3,17 @@ const assert = require('assert');
 const app = require('../server');
 const eventStore = require('../src/data/eventStore');
 const { detectVenueConflict, timeToMinutes, timesOverlap } = require('../src/domain/eventValidation');
+const { authorizationFor } = require('./helpers/auth');
 
 describe('Venue Conflict Detection', () => {
-  const organizerA = 'org-uuid-1';
+  const organizerA = 'organizer-1';
+  let organizerAuthorization;
   const testDate = '2099-05-10';
   const testVenue = 'Main Auditorium';
 
   beforeEach(async () => {
     await eventStore.clear();
+    organizerAuthorization = await authorizationFor('organizer');
   });
 
   describe('Unit: detectVenueConflict()', () => {
@@ -192,7 +195,7 @@ describe('Venue Conflict Detection', () => {
 
       const res = await request(app)
         .post('/api/events')
-        .set('x-user-id', organizerA)
+        .set('Authorization', organizerAuthorization)
         .set('Content-Type', 'application/json')
         .send({
           title: 'Workshop',
@@ -211,7 +214,7 @@ describe('Venue Conflict Detection', () => {
     it('should allow event creation with no conflicts', async () => {
       const res = await request(app)
         .post('/api/events')
-        .set('x-user-id', organizerA)
+        .set('Authorization', organizerAuthorization)
         .set('Content-Type', 'application/json')
         .send({
           title: 'Team Meeting',
@@ -245,7 +248,7 @@ describe('Venue Conflict Detection', () => {
 
       const res = await request(app)
         .post('/api/events')
-        .set('x-user-id', organizerA)
+        .set('Authorization', organizerAuthorization)
         .set('Content-Type', 'application/json')
         .send({
           title: 'Event Day 2',
@@ -276,7 +279,7 @@ describe('Venue Conflict Detection', () => {
 
       const res = await request(app)
         .post('/api/events')
-        .set('x-user-id', organizerA)
+        .set('Authorization', organizerAuthorization)
         .set('Content-Type', 'application/json')
         .send({
           title: 'Afternoon Event',
@@ -306,7 +309,7 @@ describe('Venue Conflict Detection', () => {
 
       await request(app)
         .post('/api/events')
-        .set('x-user-id', organizerA)
+        .set('Authorization', organizerAuthorization)
         .set('Content-Type', 'application/json')
         .send({
           title: 'Conflict Event',
@@ -338,7 +341,7 @@ describe('Venue Conflict Detection', () => {
 
       const res = await request(app)
         .post('/api/events')
-        .set('x-user-id', organizerA)
+        .set('Authorization', organizerAuthorization)
         .set('Content-Type', 'application/json')
         .send({
           title: 'New Event',

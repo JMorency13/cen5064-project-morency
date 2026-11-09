@@ -2,85 +2,135 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Event Management System</title>
   <style>
     body { font-family: sans-serif; max-width: 760px; margin: 2rem auto; padding: 0 1rem; }
     label { display: block; margin: .5rem 0; }
     input, textarea { padding: .3rem; width: 100%; box-sizing: border-box; }
-    button { padding: .5rem 1rem; margin-top: .5rem; }
-    #message { margin: 1rem 0; padding: .6rem; border-radius: 4px; display: none; }
-    #message.ok { background: #d9f7d9; display: block; }
-    #message.error { background: #fbdada; display: block; }
+    button { padding: .5rem 1rem; margin: .5rem .3rem .5rem 0; }
+    #message, #login-message { margin: 1rem 0; padding: .6rem; border-radius: 4px; display: none; }
+    #message.ok, #login-message.ok { background: #d9f7d9; display: block; }
+    #message.error, #login-message.error { background: #fbdada; display: block; }
     table { width: 100%; border-collapse: collapse; margin-top: .5rem; }
     th, td { border-bottom: 1px solid #ccc; padding: .4rem; text-align: left; }
+    [hidden] { display: none !important; }
   </style>
 </head>
 <body>
   <h1>Event Management System</h1>
 
-  <h2>Manage events (organizer)</h2>
-  <form id="event-form">
-    <label>Organizer ID <input id="organizer" value="organizer-1" required></label>
-    <label>Title <input id="title" required></label>
-    <label>Date <input id="date" type="date" required></label>
-    <label>Start time (events last 1 hour) <input id="time" type="time" required></label>
-    <label>Venue <input id="venue" required></label>
-    <label>Description <textarea id="description"></textarea></label>
-    <label>Capacity <input id="capacity" type="number" min="1" required></label>
-    <button type="submit">Create event</button>
-    <button id="cancel-edit" type="button" hidden>Cancel edit</button>
-  </form>
-  <div id="message" role="status"></div>
+  <section id="login-section">
+    <h2>Sign in</h2>
+    <form id="login-form">
+      <label>Email <input id="email" type="email" autocomplete="username" required></label>
+      <label>Password <input id="password" type="password" autocomplete="current-password" required></label>
+      <button type="submit">Log in</button>
+    </form>
+    <p>Demo accounts: organizer@example.edu / organizer-demo and member@example.edu / member-demo.</p>
+    <div id="login-message" role="status"></div>
+  </section>
 
-  <h2>Your upcoming events</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>Date</th>
-        <th>Time</th>
-        <th>Title</th>
-        <th>Venue</th>
-        <th>Capacity</th>
-        <th>Status</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody id="events"></tbody>
-  </table>
+  <main id="application" hidden>
+    <p>Signed in as <span id="current-user"></span> (<span id="current-role"></span>)
+      <button id="logout" type="button">Log out</button>
+    </p>
 
-  <h2>Member notifications</h2>
-  <label>Member ID <input id="member-id" value="member-1"></label>
-  <button id="load-notifications" type="button">Load notifications</button>
-  <ul id="notifications"></ul>
+    <section id="organizer-section" hidden>
+      <h2>Manage events</h2>
+      <form id="event-form">
+        <label>Title <input id="title" required></label>
+        <label>Date <input id="date" type="date" required></label>
+        <label>Start time (events last 1 hour) <input id="time" type="time" required></label>
+        <label>Venue <input id="venue" required></label>
+        <label>Description <textarea id="description"></textarea></label>
+        <label>Capacity <input id="capacity" type="number" min="1" required></label>
+        <button type="submit">Create event</button>
+        <button id="cancel-edit" type="button" hidden>Cancel edit</button>
+      </form>
+    </section>
+
+    <div id="message" role="status"></div>
+
+    <h2>Upcoming events</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Time</th>
+          <th>Title</th>
+          <th>Venue</th>
+          <th>Capacity</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="events"></tbody>
+    </table>
+
+    <section id="member-section" hidden>
+      <h2>Member notifications</h2>
+      <button id="load-notifications" type="button">Load notifications</button>
+      <ul id="notifications"></ul>
+    </section>
+  </main>
 
   <script>
-    const msg = document.getElementById('message');
-    const tbody = document.getElementById('events');
-    const form = document.getElementById('event-form');
-    const organizerInput = document.getElementById('organizer');
+    const loginSection = document.getElementById('login-section');
+    const application = document.getElementById('application');
+    const loginMessage = document.getElementById('login-message');
+    const message = document.getElementById('message');
+    const eventsBody = document.getElementById('events');
+    const eventForm = document.getElementById('event-form');
+    let token = null;
+    let currentUser = null;
     let editingEventId = null;
 
-    function show(text, ok) {
-      msg.textContent = text;
-      msg.className = ok ? 'ok' : 'error';
+    function showMessage(element, text, success) {
+      element.textContent = text;
+      element.className = success ? 'ok' : 'error';
+    }
+
+    async function api(path, options = {}) {
+      const headers = { ...options.headers };
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
+      const response = await fetch(path, { ...options, headers });
+      const body = await response.json();
+      if (!response.ok) {
+        throw new Error(body.error || 'The request could not be completed');
+      }
+      return body;
+    }
+
+    function setLoggedOut() {
+      token = null;
+      currentUser = null;
+      loginSection.hidden = false;
+      application.hidden = true;
+      document.getElementById('password').value = '';
+      eventForm.reset();
+      eventForm.querySelector('button[type="submit"]').textContent = 'Create event';
+      document.getElementById('cancel-edit').hidden = true;
+      editingEventId = null;
+      eventsBody.replaceChildren();
     }
 
     async function loadEvents() {
-      const res = await fetch('/api/events?role=organizer', {
-        headers: { 'x-user-id': organizerInput.value }
-      });
-      const body = await res.json();
-      tbody.replaceChildren();
+      const body = await api('/api/events');
+      eventsBody.replaceChildren();
 
       for (const event of body.data.events) {
+        const rsvps = Array.isArray(event.rsvps) ? event.rsvps : [];
         const row = document.createElement('tr');
-
         for (const value of [
           event.date,
           event.time,
           event.title,
           event.venue,
-          event.capacity,
+          `${rsvps.length}/${event.capacity}`,
           event.status
         ]) {
           const cell = document.createElement('td');
@@ -88,37 +138,77 @@
           row.appendChild(cell);
         }
 
-        const actionCell = document.createElement('td');
-        const editButton = document.createElement('button');
-        editButton.type = 'button';
-        editButton.textContent = 'Edit';
-        editButton.addEventListener('click', () => {
-          editingEventId = event.id;
-
-          for (const field of [
-            'title',
-            'date',
-            'time',
-            'venue',
-            'description',
-            'capacity'
-          ]) {
-            document.getElementById(field).value = event[field] || '';
-          }
-
-          form.querySelector('button[type="submit"]').textContent = 'Update event';
-          document.getElementById('cancel-edit').hidden = false;
-        });
-
-        actionCell.appendChild(editButton);
-        row.appendChild(actionCell);
-        tbody.appendChild(row);
+        const actions = document.createElement('td');
+        if (currentUser.role === 'organizer') {
+          const editButton = document.createElement('button');
+          editButton.type = 'button';
+          editButton.textContent = 'Edit';
+          editButton.addEventListener('click', () => {
+            editingEventId = event.id;
+            for (const field of ['title', 'date', 'time', 'venue', 'description', 'capacity']) {
+              document.getElementById(field).value = event[field] || '';
+            }
+            eventForm.querySelector('button[type="submit"]').textContent = 'Update event';
+            document.getElementById('cancel-edit').hidden = false;
+          });
+          actions.appendChild(editButton);
+        } else {
+          const rsvpButton = document.createElement('button');
+          rsvpButton.type = 'button';
+          rsvpButton.textContent = rsvps.includes(currentUser.id) ? 'RSVP’d' : 'RSVP';
+          rsvpButton.disabled = rsvps.includes(currentUser.id) || event.status !== 'open';
+          rsvpButton.addEventListener('click', async () => {
+            try {
+              await api(`/api/events/${encodeURIComponent(event.id)}/rsvp`, { method: 'POST' });
+              showMessage(message, `RSVP confirmed for "${event.title}".`, true);
+              await loadEvents();
+            } catch (error) {
+              showMessage(message, error.message, false);
+            }
+          });
+          actions.appendChild(rsvpButton);
+        }
+        row.appendChild(actions);
+        eventsBody.appendChild(row);
       }
     }
 
-    form.addEventListener('submit', async (event) => {
+    document.getElementById('login-form').addEventListener('submit', async (event) => {
       event.preventDefault();
+      loginMessage.className = '';
+      let result;
+      try {
+        result = await api('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: document.getElementById('email').value,
+            password: document.getElementById('password').value
+          })
+        });
+      } catch (error) {
+        showMessage(loginMessage, error.message, false);
+        return;
+      }
 
+      token = result.data.token;
+      currentUser = result.data.user;
+      document.getElementById('current-user').textContent = currentUser.name;
+      document.getElementById('current-role').textContent = currentUser.role;
+      document.getElementById('organizer-section').hidden = currentUser.role !== 'organizer';
+      document.getElementById('member-section').hidden = currentUser.role !== 'member';
+      loginSection.hidden = true;
+      application.hidden = false;
+      message.className = '';
+      try {
+        await loadEvents();
+      } catch (error) {
+        showMessage(message, error.message, false);
+      }
+    });
+
+    eventForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
       const payload = {
         title: document.getElementById('title').value,
         date: document.getElementById('date').value,
@@ -128,61 +218,57 @@
         capacity: Number(document.getElementById('capacity').value)
       };
 
-      const response = await fetch(
-        editingEventId
-          ? `/api/events/${encodeURIComponent(editingEventId)}`
-          : '/api/events',
-        {
-          method: editingEventId ? 'PUT' : 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-user-id': organizerInput.value
-          },
-          body: JSON.stringify(payload)
-        }
-      );
-
-      const body = await response.json();
-
-      if (body.success) {
+      try {
+        const result = await api(
+          editingEventId ? `/api/events/${encodeURIComponent(editingEventId)}` : '/api/events',
+          {
+            method: editingEventId ? 'PUT' : 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          }
+        );
         const action = editingEventId ? 'Updated' : 'Created';
-        show(`${action} "${body.data.title}".`, true);
-        form.reset();
-        organizerInput.value = 'organizer-1';
+        showMessage(message, `${action} "${result.data.title}".`, true);
+        eventForm.reset();
         editingEventId = null;
-        form.querySelector('button[type="submit"]').textContent = 'Create event';
+        eventForm.querySelector('button[type="submit"]').textContent = 'Create event';
         document.getElementById('cancel-edit').hidden = true;
-      } else {
-        show(body.error, false);
+        await loadEvents();
+      } catch (error) {
+        showMessage(message, error.message, false);
       }
-
-      loadEvents();
     });
 
     document.getElementById('cancel-edit').addEventListener('click', () => {
       editingEventId = null;
-      form.reset();
-      organizerInput.value = 'organizer-1';
-      form.querySelector('button[type="submit"]').textContent = 'Create event';
+      eventForm.reset();
+      eventForm.querySelector('button[type="submit"]').textContent = 'Create event';
       document.getElementById('cancel-edit').hidden = true;
     });
 
     document.getElementById('load-notifications').addEventListener('click', async () => {
-      const response = await fetch('/api/events/notifications', {
-        headers: { 'x-user-id': document.getElementById('member-id').value }
-      });
-      const body = await response.json();
-      const list = document.getElementById('notifications');
-      list.replaceChildren();
-
-      for (const notification of body.data) {
-        const item = document.createElement('li');
-        item.textContent = `${notification.message} (${notification.createdAt})`;
-        list.appendChild(item);
+      try {
+        const result = await api('/api/events/notifications');
+        const list = document.getElementById('notifications');
+        list.replaceChildren();
+        for (const notification of result.data) {
+          const item = document.createElement('li');
+          item.textContent = `${notification.message} (${notification.createdAt})`;
+          list.appendChild(item);
+        }
+      } catch (error) {
+        showMessage(message, error.message, false);
       }
     });
 
-    loadEvents();
+    document.getElementById('logout').addEventListener('click', async () => {
+      try {
+        await api('/api/auth/logout', { method: 'POST' });
+        setLoggedOut();
+      } catch (error) {
+        showMessage(message, error.message, false);
+      }
+    });
   </script>
 </body>
 </html>
