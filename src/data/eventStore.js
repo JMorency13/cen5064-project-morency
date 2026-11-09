@@ -51,8 +51,14 @@ class EventStore {
     const index = this.events.findIndex((savedEvent) => savedEvent.id === event.id);
     if (index === -1) return null;
 
+    const previousEvent = this.events[index];
     this.events[index] = event;
-    this.persist();
+    try {
+      this.persist();
+    } catch (error) {
+      this.events[index] = previousEvent;
+      throw error;
+    }
     return event;
   }
 
