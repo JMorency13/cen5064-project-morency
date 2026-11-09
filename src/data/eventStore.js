@@ -1,52 +1,74 @@
 const fs = require('fs');
 const path = require('path');
 
-const events = [];
-let filePath = null;
+const constructorToken = Symbol('EventStore constructor');
 
-// Enables JSON-file persistence. Without it the store is memory-only (used by tests).
-function init(file) {
-  filePath = file;
-  events.length = 0;
-  if (fs.existsSync(filePath)) {
-    events.push(...JSON.parse(fs.readFileSync(filePath, 'utf8')));
+class EventStore {
+  static #instance = null;
+
+  static getInstance() {
+    if (!EventStore.#instance) {
+      EventStore.#instance = new EventStore(constructorToken);
+    }
+    return EventStore.#instance;
+  }
+
+  constructor(token) {
+    if (token !== constructorToken) {
+      throw new Error('Use EventStore.getInstance()');
+    }
+
+    this.events = [];
+    this.filePath = null;
+  }
+
+  // Enables JSON-file persistence. Without it the store is memory-only (used by tests).
+  init(file) {
+    this.filePath = file;
+    this.events.length = 0;
+    if (fs.existsSync(this.filePath)) {
+      this.events.push(...JSON.parse(fs.readFileSync(this.filePath, 'utf8')));
+    }
+  }
+
+  persist() {
+    if (!this.filePath) return;
+    fs.mkdirSync(path.dirname(this.filePath), { recursive: true });
+    fs.writeFileSync(this.filePath, JSON.stringify(this.events, null, 2));
+  }
+
+  async findAll() {
+    return this.events;
+  }
+
+  async save(event) {
+    this.events.push(event);
+    this.persist();
+    return event;
+  }
+
+  async update(event) {
+    const index = this.events.findIndex((savedEvent) => savedEvent.id === event.id);
+    if (index === -1) return null;
+
+    const previousEvent = this.events[index];
+    this.events[index] = event;
+    try {
+      this.persist();
+    } catch (error) {
+      this.events[index] = previousEvent;
+      throw error;
+    }
+    return event;
+  }
+
+  async clear() {
+    this.events.length = 0;
+    this.persist();
   }
 }
 
-function persist() {
-  if (!filePath) return;
-  fs.mkdirSync(path.dirname(filePath), { recursive: true });
-  fs.writeFileSync(filePath, JSON.stringify(events, null, 2));
-}
+const eventStore = EventStore.getInstance();
+eventStore.getInstance = EventStore.getInstance;
 
-async function findAll() {
-  return events;
-}
-
-async function save(event) {
-  events.push(event);
-  persist();
-  return event;
-}
-
-async function update(event) {
-  const index = events.findIndex((savedEvent) => savedEvent.id === event.id);
-  if (index === -1) return null;
-
-  events[index] = event;
-  persist();
-  return event;
-}
-
-async function clear() {
-  events.length = 0;
-  persist();
-}
-
-module.exports = {
-  init,
-  findAll,
-  save,
-  update,
-  clear
-};
+module.exports = eventStore;

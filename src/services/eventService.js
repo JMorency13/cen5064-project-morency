@@ -80,6 +80,18 @@ function buildRsvpSuccessResponse(event, statusCode) {
   };
 }
 
+function notificationsForRsvps(event, type, message, createdAt, details = {}) {
+  return (event.rsvps || []).map((recipientId) => ({
+    id: uuidv4(),
+    type,
+    eventId: event.id,
+    recipientId,
+    message,
+    ...details,
+    createdAt
+  }));
+}
+
 function createEventService({ eventStore }) {
   if (
     !eventStore
@@ -195,17 +207,13 @@ function createEventService({ eventStore }) {
     updatedEvent.notifications = [...(event.notifications || [])];
 
     if (changedFields.length > 0) {
-      for (const recipientId of event.rsvps || []) {
-        updatedEvent.notifications.push({
-          id: uuidv4(),
-          type: 'event_updated',
-          eventId,
-          recipientId,
-          message: `"${updatedEvent.title}" details changed: ${changedFields.join(', ')}.`,
-          changedFields: [...changedFields],
-          createdAt: updatedEvent.updatedAt
-        });
-      }
+      updatedEvent.notifications.push(...notificationsForRsvps(
+        event,
+        'event_updated',
+        `"${updatedEvent.title}" details changed: ${changedFields.join(', ')}.`,
+        updatedEvent.updatedAt,
+        { changedFields: [...changedFields] }
+      ));
     }
 
     const savedEvent = await eventStore.update(updatedEvent);
@@ -216,6 +224,45 @@ function createEventService({ eventStore }) {
       error: null,
       statusCode: 200
     };
+  }
+
+  async function cancelEvent(eventId, organizerId) {
+    if (!organizerId) {
+      return buildErrorResponse('Organizer ID is required', 401);
+    }
+
+    const events = await eventStore.findAll();
+    const event = events.find((savedEvent) => savedEvent.id === eventId);
+    if (!event) {
+      return buildErrorResponse('Event not found', 404);
+    }
+    if (event.createdBy !== organizerId) {
+      return buildErrorResponse('Only the event organizer can cancel this event', 403);
+    }
+    if (event.status === 'cancelled') {
+      return { success: true, data: toPublicEvent(event), error: null, statusCode: 200 };
+    }
+
+    const updatedAt = new Date().toISOString();
+    const updatedEvent = {
+      ...event,
+      status: 'cancelled',
+      updatedAt,
+      notifications: [
+        ...(event.notifications || []),
+        ...notificationsForRsvps(
+          event,
+          'event_cancelled',
+          `"${event.title}" has been cancelled.`,
+          updatedAt
+        )
+      ]
+    };
+    const savedEvent = await eventStore.update(updatedEvent);
+    if (!savedEvent) {
+      return buildErrorResponse('Event not found', 404);
+    }
+    return { success: true, data: toPublicEvent(savedEvent), error: null, statusCode: 200 };
   }
 
   async function rsvpForEvent(eventId, memberId) {
@@ -276,6 +323,7 @@ function createEventService({ eventStore }) {
   return {
     createEvent,
     updateEvent,
+    cancelEvent,
     rsvpForEvent,
     getNotificationsForUser,
     validateAndCheckConflicts
