@@ -262,11 +262,57 @@
       border-radius: 8px;
     }
 
-    #attendees-modal, section#account-section {
+    #attendees-modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: none;
+      z-index: 999;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #attendees-modal-overlay.active {
+      display: flex;
+    }
+
+    #attendees-modal {
       background: white;
       border-radius: 12px;
       padding: 2rem;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 500px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+      position: relative;
+      z-index: 1000;
+    }
+
+    #attendees-modal h2 {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    #attendees-modal .close-button {
+      background: transparent;
+      color: var(--gray-700);
+      font-size: 1.5rem;
+      padding: 0;
+      margin: 0;
+      border: none;
+      cursor: pointer;
+      min-width: auto;
+      width: auto;
+    }
+
+    #attendees-modal .close-button:hover {
+      color: var(--primary);
     }
 
     #attendees-list {
@@ -287,6 +333,13 @@
     #attendees-list li:empty::after {
       content: 'Loading...';
       color: var(--gray-500);
+    }
+
+    section#account-section {
+      background: white;
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
     }
 
     #notifications {
@@ -359,12 +412,16 @@
     </nav>
     <div id="message" role="status"></div>
 
-    <section id="attendees-modal" hidden>
-      <h2>Event Attendees: <span id="attendees-event-title"></span></h2>
-      <p>Attendees: <span id="attendees-count"></span> / <span id="attendees-capacity"></span></p>
-      <ul id="attendees-list"></ul>
-      <button id="close-attendees" type="button">Close</button>
-    </section>
+    <div id="attendees-modal-overlay">
+      <section id="attendees-modal">
+        <h2>
+          Event Attendees: <span id="attendees-event-title"></span>
+          <button class="close-button" id="close-attendees" type="button">✕</button>
+        </h2>
+        <p>Attendees: <span id="attendees-count"></span> / <span id="attendees-capacity"></span></p>
+        <ul id="attendees-list"></ul>
+      </section>
+    </div>
 
     <div id="dashboard">
     <section id="organizer-section" hidden>
@@ -582,7 +639,7 @@
                   attendeesList.appendChild(li);
                 }
               }
-              document.getElementById('attendees-modal').hidden = false;
+              document.getElementById('attendees-modal-overlay').classList.add('active');
             } catch (error) {
               if (error.status !== 401) showMessage(message, error.message, false);
             }
@@ -778,7 +835,14 @@
     });
 
     document.getElementById('close-attendees').addEventListener('click', () => {
-      document.getElementById('attendees-modal').hidden = true;
+      document.getElementById('attendees-modal-overlay').classList.remove('active');
+    });
+
+    // Close modal when clicking on overlay background
+    document.getElementById('attendees-modal-overlay').addEventListener('click', (e) => {
+      if (e.target.id === 'attendees-modal-overlay') {
+        document.getElementById('attendees-modal-overlay').classList.remove('active');
+      }
     });
 
     restoreSession();
