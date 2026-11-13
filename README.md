@@ -328,6 +328,7 @@ Decisions live in [`docs/adr/`](docs/adr/). Start with ADR-001 in Session 4.
 A one-line note per week keeps your commit story readable:
 
 - Week 1 (Aug 24): repo created, three ideas drafted
-- Week 2 (Aug 31): ...
-
-## Working on: Create an event as an organizer 1
+- Week 2 (Aug 31): project approval and architecture design
+- Week 3 (Sep 7): authentication and initial event management
+- Week 4 (Sep 14): event validation and conflict detection
+- Session 5 (Nov 12): attendee viewing for organizers, database support, UI redesign
