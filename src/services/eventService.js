@@ -92,7 +92,7 @@ function notificationsForRsvps(event, type, message, createdAt, details = {}) {
   }));
 }
 
-function createEventService({ eventStore }) {
+function createEventService({ eventStore, userStore }) {
   if (
     !eventStore
     || typeof eventStore.findAll !== 'function'
@@ -320,12 +320,72 @@ function createEventService({ eventStore }) {
     };
   }
 
+  async function getEventAttendees(eventId, organizerId) {
+    if (!organizerId) {
+      return buildErrorResponse('Organizer ID is required', 401);
+    }
+
+    if (!eventId) {
+      return buildErrorResponse('Event ID is required', 400);
+    }
+
+    const events = await eventStore.findAll();
+    const event = events.find((savedEvent) => savedEvent.id === eventId);
+
+    if (!event) {
+      return buildErrorResponse('Event not found', 404);
+    }
+
+    if (event.createdBy !== organizerId) {
+      return buildErrorResponse(
+        'Only the event organizer can view attendees',
+        403
+      );
+    }
+
+    const attendeeIds = Array.isArray(event.rsvps) ? event.rsvps : [];
+    
+    // Resolve attendee IDs to names using userStore
+    let attendees = [];
+    if (userStore && typeof userStore.findById === 'function') {
+      attendees = attendeeIds.map((id) => {
+        const user = userStore.findById(id);
+        return {
+          id,
+          name: user ? user.name : 'Unknown User'
+        };
+      });
+    } else {
+      attendees = attendeeIds.map((id) => ({
+        id,
+        name: 'Member'
+      }));
+    }
+
+    // Sort by name
+    attendees.sort((a, b) => a.name.localeCompare(b.name));
+
+    return {
+      success: true,
+      data: {
+        eventId: event.id,
+        eventTitle: event.title,
+        attendeeCount: attendees.length,
+        capacity: event.capacity,
+        attendees
+      },
+      error: null,
+      statusCode: 200
+    };
+  }
+
   return {
     createEvent,
     updateEvent,
     cancelEvent,
     rsvpForEvent,
     getNotificationsForUser,
+    getEventAttendees,
     validateAndCheckConflicts
   };
 }

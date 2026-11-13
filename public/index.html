@@ -60,6 +60,13 @@
     </nav>
     <div id="message" role="status"></div>
 
+    <section id="attendees-modal" hidden>
+      <h2>Event Attendees: <span id="attendees-event-title"></span></h2>
+      <p>Attendees: <span id="attendees-count"></span> / <span id="attendees-capacity"></span></p>
+      <ul id="attendees-list"></ul>
+      <button id="close-attendees" type="button">Close</button>
+    </section>
+
     <div id="dashboard">
     <section id="organizer-section" hidden>
       <h2>Manage events</h2>
@@ -254,6 +261,35 @@
 
         const actions = document.createElement('td');
         if (currentUser.role === 'organizer') {
+          const viewAttendeesButton = document.createElement('button');
+          viewAttendeesButton.type = 'button';
+          viewAttendeesButton.textContent = 'Attendees';
+          viewAttendeesButton.addEventListener('click', async () => {
+            try {
+              const result = await api(`/api/events/${encodeURIComponent(event.id)}/attendees`);
+              document.getElementById('attendees-event-title').textContent = result.data.eventTitle;
+              document.getElementById('attendees-count').textContent = result.data.attendeeCount;
+              document.getElementById('attendees-capacity').textContent = result.data.capacity;
+              const attendeesList = document.getElementById('attendees-list');
+              attendeesList.replaceChildren();
+              if (result.data.attendees.length === 0) {
+                const li = document.createElement('li');
+                li.textContent = 'No attendees yet';
+                attendeesList.appendChild(li);
+              } else {
+                for (const attendee of result.data.attendees) {
+                  const li = document.createElement('li');
+                  li.textContent = attendee.name;
+                  attendeesList.appendChild(li);
+                }
+              }
+              document.getElementById('attendees-modal').hidden = false;
+            } catch (error) {
+              if (error.status !== 401) showMessage(message, error.message, false);
+            }
+          });
+          actions.appendChild(viewAttendeesButton);
+
           const editButton = document.createElement('button');
           editButton.type = 'button';
           editButton.textContent = 'Edit';
@@ -440,6 +476,10 @@
       } catch (error) {
         if (error.status !== 401) showMessage(message, error.message, false);
       }
+    });
+
+    document.getElementById('close-attendees').addEventListener('click', () => {
+      document.getElementById('attendees-modal').hidden = true;
     });
 
     restoreSession();

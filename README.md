@@ -42,9 +42,10 @@ Run the tests with `npm test`.
 1. Select **Create account**, enter your details, choose **Organizer**, and submit the form. Alternatively, sign in with the [organizer demo account](#accounts-and-demo-limitations).
 2. Under **Manage events**, enter a title, future date, start time, venue, and capacity. Add a description if you wish, then select **Create event**.
 3. Find your event under **Upcoming events**. The capacity column shows how many members have RSVP'd. Events last one hour; an event that overlaps another at the same venue is rejected.
-4. To change an event, select **Edit**, update its details, and select **Update event**. Members who RSVP'd receive a notification when details change.
-5. To cancel an event, select **Cancel event** and confirm. Its status changes to `cancelled`, and members who RSVP'd receive a notification.
-6. To sign out, select **Account**, then **Log out**.
+4. To view who is attending an event, select **Attendees**. A list will show attendee names and the total count.
+5. To change an event, select **Edit**, update its details, and select **Update event**. Members who RSVP'd receive a notification when details change.
+6. To cancel an event, select **Cancel event** and confirm. Its status changes to `cancelled`, and members who RSVP'd receive a notification.
+7. To sign out, select **Account**, then **Log out**.
 
 ### Member walkthrough
 

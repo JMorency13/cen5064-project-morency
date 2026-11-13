@@ -2,18 +2,30 @@ const express = require('express');
 const router = express.Router();
 
 const eventStore = require('../data/eventStore');
+const userStore = require('../data/userStore');
 const { createDashboardService } = require('../services/dashboardService');
 const { createEventService } = require('../services/eventService');
 const { authenticate, authorize } = require('../middleware/auth');
 
 const dashboardService = createDashboardService({ eventStore });
-const eventService = createEventService({ eventStore });
+const eventService = createEventService({ eventStore, userStore });
 
 // GET /api/events/notifications (Notifications for the signed-in member)
 router.get('/notifications', authenticate, async (req, res) => {
   const userId = req.user.id;
   const result = await eventService.getNotificationsForUser(userId);
   return res.status(result.statusCode).json(result);
+});
+
+// GET /api/events/:id/attendees (Organizer views attendees by name)
+router.get('/:id/attendees', authenticate, authorize('organizer'), async (req, res) => {
+  const organizerId = req.user.id;
+  const result = await eventService.getEventAttendees(req.params.id, organizerId);
+  return res.status(result.statusCode).json({
+    success: result.success,
+    data: result.data,
+    error: result.error
+  });
 });
 
 // GET /api/events (Dashboard listing with role & upcoming filtering)

@@ -105,7 +105,7 @@ describe('Browser session and account view', () => {
     page.get('password').value = credentialsByRole.organizer.password;
     await page.get('login-form').dispatch('submit');
     let row = page.get('events').children[0];
-    let cancel = row.children[6].children[1];
+    let cancel = row.children[6].children[2];
     assert.strictEqual(cancel.textContent, 'Cancel event');
     await cancel.dispatch('click');
     assert.strictEqual((await eventStore.findAll())[0].status, 'open');
@@ -113,7 +113,7 @@ describe('Browser session and account view', () => {
     await cancel.dispatch('click');
     row = page.get('events').children[0];
     assert.strictEqual(row.children[5].textContent, 'cancelled');
-    assert.strictEqual(row.children[6].children.length, 1);
+    assert.strictEqual(row.children[6].children.length, 2);
     assert.match(page.get('message').textContent, /Cancelled/);
 
     page.get('show-account').dispatch('click');
