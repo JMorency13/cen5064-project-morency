@@ -33,7 +33,12 @@ npm install
 npm start
 ```
 
-Open http://localhost:3000. To use a different port, set `PORT` first: `PORT=4000 npm start` (Mac/Linux), `$env:PORT=4000; npm start` (Windows PowerShell), or `set PORT=4000 && npm start` (Windows cmd). Events are saved to `data/events.json` (set `EVENTS_FILE` to change it) and survive restarts.
+Open http://localhost:3000. To use a different port, set `PORT` first: `PORT=4000 npm start` (Mac/Linux), `$env:PORT=4000; npm start` (Windows PowerShell), or `set PORT=4000 && npm start` (Windows cmd).
+
+**Data storage:**
+- By default, events and users are saved to JSON files: `data/events.json` and `data/users.json`
+- To use a database instead (SQLite or PostgreSQL), run `node scripts/migrate.js` to initialize the database, then start the server with `USE_DATABASE=true npm start`
+- Database path: Set `DATABASE_FILE` to customize the SQLite database location (default: `data/events.db`)
 
 Run the tests with `npm test`.
 
@@ -283,15 +288,32 @@ You can create a local account with a unique email address and a password of 8�
 
 ### How data is stored
 
-The demo uses local JSON files instead of a database. The server loads them into memory when it starts and writes changes back as users register or events change:
+The system supports both JSON files (default) and database storage:
 
-- **Accounts:** `data/users.json` stores registered users' names, email addresses, roles, IDs, and salted password hashes—not plaintext passwords. The built-in demo accounts are kept in memory instead. Set `USERS_FILE` before starting the server to use a different file.
-- **Events:** `data/events.json` stores event details, organizer IDs, RSVPs, statuses, and in-app notifications. Set `EVENTS_FILE` before starting the server to use a different file.
-- **Sessions:** Active sessions are held in server memory; the browser saves the session token in local storage to restore the login after a reload. Server restarts clear sessions, but not saved accounts or events.
+#### JSON Storage (Default)
+The demo uses local JSON files for simplicity during development. The server loads them into memory and writes changes back as users register or events change:
+- **Accounts:** `data/users.json` stores registered users' names, email addresses, roles, IDs, and salted password hashes—not plaintext passwords. Built-in demo accounts are kept in memory. Set `USERS_FILE` to use a different file.
+- **Events:** `data/events.json` stores event details, organizer IDs, RSVPs, and statuses. Set `EVENTS_FILE` to use a different file.
 
-The `data/` directory is ignored by Git. Keep these files and any alternative storage paths private and out of version control. Use one server process per user file; the simple store does not coordinate writes between processes.
+#### Database Storage (SQLite)
+To use a persistent database instead of JSON files:
+1. Run `node scripts/migrate.js` to initialize the SQLite database with required tables
+2. Start the server with `USE_DATABASE=true npm start`
+3. Set `DATABASE_FILE` to customize the database location (default: `data/events.db`)
 
-In future development, the JSON files could be replaced with a database that supports concurrent users, reliable updates, and backups. Account authentication could move to a university SSO provider, with secure server-managed sessions instead of browser-stored tokens. These are potential improvements, not features of the current demo.
+The database schema includes:
+- **users** — registered user accounts with encrypted passwords
+- **events** — event details and metadata
+- **rsvps** — many-to-many relationship between members and events
+- **notifications** — event change notifications for members
+
+#### Sessions
+Active sessions are held in server memory. The browser saves the session token in local storage to restore the login after a reload. Server restarts clear sessions, but not saved accounts or events.
+
+The `data/` directory is ignored by Git. Keep these files and any alternative storage paths private and out of version control.
+
+#### Future improvements
+PostgreSQL support could be added for production deployments. Account authentication could move to a university SSO provider, with secure server-managed sessions instead of browser-stored tokens.
 
 ## Architecture Decision Records
 
