@@ -358,6 +358,91 @@
 
     [hidden] { display: none !important; }
 
+    #calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 0.5rem;
+    }
+
+    .calendar-day {
+      background: white;
+      border: 1px solid var(--gray-200);
+      border-radius: 8px;
+      padding: 0.75rem;
+      min-height: 120px;
+      overflow-y: auto;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .calendar-day:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      border-color: var(--secondary);
+    }
+
+    .calendar-day.empty {
+      background: var(--gray-50);
+      color: var(--gray-400);
+    }
+
+    .calendar-day.other-month {
+      background: var(--gray-50);
+      opacity: 0.5;
+    }
+
+    .calendar-day.today {
+      background: var(--primary);
+      color: white;
+      font-weight: 600;
+    }
+
+    .calendar-day.today .day-date {
+      color: white;
+    }
+
+    .day-date {
+      font-weight: 600;
+      color: var(--primary);
+      margin-bottom: 0.5rem;
+      font-size: 1rem;
+    }
+
+    .calendar-day.today .day-date {
+      color: white;
+    }
+
+    .calendar-event {
+      background: var(--secondary);
+      color: white;
+      padding: 0.4rem 0.6rem;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      margin-bottom: 0.4rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+
+    .calendar-event:hover {
+      background: #0891b2;
+    }
+
+    .calendar-event.cancelled {
+      background: var(--gray-400);
+      text-decoration: line-through;
+    }
+
+    .day-header {
+      text-align: center;
+      font-weight: 600;
+      padding: 0.75rem;
+      background: var(--gray-100);
+      border-radius: 6px;
+      color: var(--gray-700);
+    }
+
     @media (max-width: 768px) {
       h1 { font-size: 1.75rem; }
       main, section { padding: 0 1rem; }
@@ -366,6 +451,10 @@
       button { padding: 0.6rem 1rem; font-size: 0.9rem; }
       nav { flex-direction: column; }
       nav button { width: 100%; }
+      #calendar-grid { grid-template-columns: repeat(7, 1fr); gap: 0.25rem; }
+      .calendar-day { min-height: 100px; padding: 0.5rem; font-size: 0.85rem; }
+      .day-date { font-size: 0.9rem; }
+      .calendar-event { font-size: 0.7rem; padding: 0.3rem 0.4rem; }
     }
   </style>
 </head>
@@ -438,21 +527,42 @@
       </form>
     </section>
 
-    <h2>Upcoming events</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Date</th>
-          <th>Time</th>
-          <th>Title</th>
-          <th>Venue</th>
-          <th>Capacity</th>
-          <th>Status</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody id="events"></tbody>
-    </table>
+    <div id="events-container">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2 style="margin: 0;">Upcoming events</h2>
+        <div>
+          <button id="toggle-view" type="button" style="background: var(--secondary); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-weight: 500;">
+            📅 Calendar View
+          </button>
+        </div>
+      </div>
+
+      <!-- Table View -->
+      <table id="events-table-view">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Time</th>
+            <th>Title</th>
+            <th>Venue</th>
+            <th>Capacity</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="events"></tbody>
+      </table>
+
+      <!-- Calendar View -->
+      <div id="calendar-container" hidden style="margin-top: 2rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+          <button id="prev-month" type="button" style="background: var(--gray-200); border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer;">← Previous</button>
+          <h3 id="calendar-month" style="margin: 0; min-width: 200px; text-align: center;"></h3>
+          <button id="next-month" type="button" style="background: var(--gray-200); border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer;">Next →</button>
+        </div>
+        <div id="calendar-grid" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.5rem;"></div>
+      </div>
+    </div>
 
     <section id="member-section" hidden>
       <h2>Member notifications</h2>
@@ -595,8 +705,116 @@
       }
     }
 
+    let calendarCurrentDate = new Date();
+    let allEvents = [];
+
+    function renderCalendar() {
+      const year = calendarCurrentDate.getFullYear();
+      const month = calendarCurrentDate.getMonth();
+      
+      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'];
+      
+      document.getElementById('calendar-month').textContent = `${monthNames[month]} ${year}`;
+
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+      const daysInMonth = lastDay.getDate();
+      const startingDayOfWeek = firstDay.getDay();
+
+      const grid = document.getElementById('calendar-grid');
+      grid.replaceChildren();
+
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      for (const day of dayNames) {
+        const header = document.createElement('div');
+        header.className = 'day-header';
+        header.textContent = day;
+        grid.appendChild(header);
+      }
+
+      for (let i = 0; i < startingDayOfWeek; i++) {
+        const emptyDay = document.createElement('div');
+        emptyDay.className = 'calendar-day other-month empty';
+        grid.appendChild(emptyDay);
+      }
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dayCell = document.createElement('div');
+        dayCell.className = 'calendar-day';
+        
+        const cellDate = new Date(year, month, day);
+        const dateStr = cellDate.toISOString().split('T')[0];
+        
+        const today = new Date();
+        if (cellDate.toDateString() === today.toDateString()) {
+          dayCell.classList.add('today');
+        }
+
+        const dateDiv = document.createElement('div');
+        dateDiv.className = 'day-date';
+        dateDiv.textContent = day;
+        dayCell.appendChild(dateDiv);
+
+        const dayEvents = allEvents.filter(e => e.date === dateStr);
+        
+        for (const event of dayEvents) {
+          const eventDiv = document.createElement('div');
+          eventDiv.className = 'calendar-event';
+          if (event.status === 'cancelled') {
+            eventDiv.classList.add('cancelled');
+          }
+          eventDiv.textContent = event.title;
+          eventDiv.style.cursor = 'pointer';
+          eventDiv.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const row = eventsBody.querySelector(`tr`);
+            const eventRow = Array.from(eventsBody.querySelectorAll('tr')).find(r => 
+              r.textContent.includes(event.title) && r.textContent.includes(event.date)
+            );
+            if (eventRow) {
+              eventRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              eventRow.style.backgroundColor = '#fff9e6';
+              setTimeout(() => eventRow.style.backgroundColor = '', 2000);
+            }
+          });
+          dayCell.appendChild(eventDiv);
+        }
+
+        grid.appendChild(dayCell);
+      }
+    }
+
+    document.getElementById('toggle-view').addEventListener('click', () => {
+      const tableView = document.getElementById('events-table-view');
+      const calendarView = document.getElementById('calendar-container');
+      const toggleBtn = document.getElementById('toggle-view');
+      
+      if (calendarView.hidden) {
+        tableView.hidden = true;
+        calendarView.hidden = false;
+        toggleBtn.textContent = '📋 Table View';
+        renderCalendar();
+      } else {
+        tableView.hidden = false;
+        calendarView.hidden = true;
+        toggleBtn.textContent = '📅 Calendar View';
+      }
+    });
+
+    document.getElementById('prev-month').addEventListener('click', () => {
+      calendarCurrentDate.setMonth(calendarCurrentDate.getMonth() - 1);
+      renderCalendar();
+    });
+
+    document.getElementById('next-month').addEventListener('click', () => {
+      calendarCurrentDate.setMonth(calendarCurrentDate.getMonth() + 1);
+      renderCalendar();
+    });
+
     async function loadEvents() {
       const body = await api('/api/events');
+      allEvents = body.data.events;
       eventsBody.replaceChildren();
 
       for (const event of body.data.events) {
