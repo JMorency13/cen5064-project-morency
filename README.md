@@ -37,25 +37,22 @@ Open http://localhost:3000. To use a different port, set `PORT` first: `PORT=400
 
 Run the tests with `npm test`.
 
-### Login (local demo identity provider)
+### Organizer walkthrough
 
-The demo runs without a university SSO service. Sign in with one of these local accounts:
+1. Select **Create account**, enter your details, choose **Organizer**, and submit the form. Alternatively, sign in with the [organizer demo account](#accounts-and-demo-limitations).
+2. Under **Manage events**, enter a title, future date, start time, venue, and capacity. Add a description if you wish, then select **Create event**.
+3. Find your event under **Upcoming events**. The capacity column shows how many members have RSVP'd. Events last one hour; an event that overlaps another at the same venue is rejected.
+4. To change an event, select **Edit**, update its details, and select **Update event**. Members who RSVP'd receive a notification when details change.
+5. To cancel an event, select **Cancel event** and confirm. Its status changes to `cancelled`, and members who RSVP'd receive a notification.
+6. To sign out, select **Account**, then **Log out**.
 
-| Role | Email | Password |
-|------|-------|----------|
-| Organizer | `organizer@example.edu` | `organizer-demo` |
-| Member | `member@example.edu` | `member-demo` |
+### Member walkthrough
 
-Set `DEMO_ORGANIZER_PASSWORD` and/or `DEMO_MEMBER_PASSWORD` before starting the server to override the demo passwords. Both variables are required when `NODE_ENV=production` so the demo defaults cannot be used there. Password hashes and login sessions are held in memory; sessions expire after eight hours and are cleared on restart. The demo provider is an adapter boundary for a future university identity-provider integration, not production authentication.
-
-Organizer accounts can create and update their own events. Member accounts can RSVP; the event changes to `full` when its capacity is reached. The API requires a bearer token from `/api/auth/login` and determines identity and role from that token rather than request headers or query parameters.
-
-### Working slice: create an event with venue-conflict prevention
-
-1. Sign in with the organizer demo account, enter a title, a future date, a start time, a venue and a capacity, then click **Create event**. The event appears in the "Upcoming events" table.
-2. Create a second event with the same venue and date at an overlapping time (events last 1 hour, so 14:00 and 14:30 overlap). It is rejected with a message naming the conflicting event, and nothing is saved.
-3. Stop the server (Ctrl+C) and run `npm start` again. The first event is still listed.
-4. Sign in with the member demo account and RSVP to an open upcoming event.
+1. Select **Create account**, enter your details, choose **Member**, and submit the form. Alternatively, sign in with the [member demo account](#accounts-and-demo-limitations).
+2. Browse **Upcoming events**. An organizer must first create an event for it to appear.
+3. Select **RSVP** for an open event. The button changes to **RSVP’d**; events at capacity are marked `full` and cannot accept new RSVPs.
+4. Check **Member notifications** for updates or cancellations to events you RSVP'd to. Notifications load when you sign in or reload; select **Load notifications** to refresh them. Cancelled events you RSVP'd to remain on your dashboard marked `cancelled`.
+5. To sign out, select **Account**, then **Log out**.
 
 ## Architecture
 
@@ -63,117 +60,237 @@ Organizer accounts can create and update their own events. Member accounts can R
 
 | Tier | Responsibilities in THIS system |
 |------|--------------------------------|
-| Presentation | The browser login form and role-specific event dashboard in `public/index.html`. |
-| Service | API orchestration, credential verification and session management, event creation/update, RSVP, and dashboard queries. |
+| Presentation | The browser registration and login forms and role-specific event dashboard in `public/index.html`. |
+| Service | API orchestration, credential verification and session management, event creation/update/cancellation, RSVP, notifications, and dashboard queries. |
 | Domain | Pure event validation, venue-conflict detection, and RSVP capacity/event-state rules. |
-| Data | The event repository persists `data/events.json`; the local demo user store keeps salted password hashes in memory. |
+| Data | The event repository persists `data/events.json`; the local user store persists registered users' salted password hashes in `data/users.json` and keeps demo account hashes in memory. |
 
 ### C4 — Context & Container (Session 3 studio)
 
+The context diagram shows the roles supported by the current local demo.
+
 ```mermaid
 flowchart TB
-  user["User (Organizer / Member)"] -->|uses| system["Event Management System"]
-  system -->|authenticates via| auth["Local demo identity provider<br/>(replaceable by University SSO)"]
-  system -->|sends email via| email["Email Service (SMTP / 3rd-party)"]
-  system -->|optionally syncs with| calendar["Calendar Service (Google / Outlook)"]
+  organizer["Organizer"] -->|registers, signs in, manages and cancels events| system["Event Management System<br/>Local demo"]
+  member["Member"] -->|registers, signs in, RSVPs and views notifications| system
 ```
 
+The container diagram shows the running application and its local storage. Sessions
+are kept in server memory, while the browser stores the bearer token for reloads.
+
 ```mermaid
 flowchart TB
-  user["User (Organizer / Member)"] -->|uses| ui["Web UI / Client<br/>(Presentation)"]
+  user["Organizer or Member"] -->|uses| ui
 
   subgraph EMS["Event Management System"]
-    ui -->|calls| api["API Server (Express)<br/>(Service & Orchestration)"]
-    api -->|enforces rules via| domain["Domain Module (Event rules)"]
-    api -->|reads / writes| db["Database / File store<br/>(Data)"]
-    api -->|pushes realtime| realtime["Realtime Notifications<br/>(WebSocket / SSE)"]
+    ui["Browser UI<br/>Registration, login, dashboard, account"] -->|stores bearer token| browserStore["Browser local storage"]
+    ui -->|HTTP / JSON| api["Express API<br/>Auth and event routes"]
+    api -->|authenticates and authorizes| auth["Local auth service<br/>Credentials and sessions"]
+    api -->|calls| services["Event and dashboard services"]
+    services -->|validates events and RSVPs| domain["Event domain rules"]
+    auth -->|reads demo and registered users| userStore["Local user store<br/>Demo users in memory"]
+    auth -->|creates and validates| sessions["Sessions<br/>Server memory"]
+    services -->|reads and writes| eventStore["Event store"]
+    userStore -->|persists registered users| usersFile[("data/users.json")]
+    eventStore -->|persists events and notifications| eventsFile[("data/events.json")]
   end
-
-  api -->|auth checks via| auth["Local demo identity provider<br/>(replaceable by University SSO)"]
-  api -->|sends email via| email["Email Service (external)"]
-  api -->|optionally writes to| calendar["Calendar Service (external)"]
 ```
 
 ### UML — Class & Sequence (Session 3 studio)
 
+The model below describes the in-memory data records and service modules; records
+are plain objects, not `User` or `Event` classes. Roles are values on a user record.
+An event's `updatedAt` and notifications are present after an update or
+cancellation; notifications are created for RSVP'd members when details change
+or the event is cancelled.
+
 ```mermaid
 classDiagram
-    class User {
-        -id: String
-        -name: String
-        -email: String
-        -role: String
-        +viewDashboard()
-        +rsvpFor(event: Event)
+    class UserRecord {
+        +String id
+        +String name
+        +String email
+        +String role
+        +Buffer salt
+        +Buffer passwordHash
     }
-
-    class Organizer {
-        +createEvent()
-        +updateEvent()
-        +cancelEvent()
-        +viewAttendance()
+    class EventRecord {
+        +String id
+        +String title
+        +String date
+        +String time
+        +String venue
+        +String description
+        +Number capacity
+        +String createdBy
+        +String createdAt
+        +String updatedAt
+        +String[] rsvps
+        +String status
     }
-
-    class Event {
-        -id: String
-        -title: String
-        -venue: String
-        -startTime: Date
-        -endTime: Date
-        -capacity: Integer
-        -rsvps: List~String~
-        -status: String
-        +isFull(): Boolean
-        +overlapsWith(other: Event): Boolean
-        +addRsvp(userId: String): Boolean
-        +removeRsvp(userId: String)
-        +lockIfFull()
+    class NotificationRecord {
+        +String id
+        +String type
+        +String eventId
+        +String recipientId
+        +String message
+        +String[] changedFields
+        +String createdAt
     }
-
-    class Notification {
-        -id: String
-        -type: String
-        -message: String
-        -timestamp: Date
-        +sendToUser(user: User)
+    class AuthService {
+        +register(name, email, password, role)
+        +login(email, password)
+        +getUserForToken(token)
+        +logout(token)
     }
-
-    User <|-- Organizer
-    User --> Event : views / RSVPs
-    Organizer --> Event : creates / manages
-    Event --> Notification : triggers
+    class EventService {
+        +createEvent(eventData, organizerId)
+        +updateEvent(eventId, updates, organizerId)
+        +cancelEvent(eventId, organizerId)
+        +rsvpForEvent(eventId, memberId)
+        +getNotificationsForUser(userId)
+    }
+    class DashboardService {
+        +getUpcomingEvents(userId, userRole, options)
+    }
+    class UserStore {
+        +findByEmail(email)
+        +save(user)
+    }
+    class EventStore {
+        +findAll()
+        +save(event)
+        +update(event)
+    }
+    AuthService --> UserStore : uses
+    UserStore --> UserRecord : stores
+    EventService --> EventStore : uses
+    DashboardService --> EventStore : uses
+    EventStore --> EventRecord : stores
+    EventRecord "1" o-- "0..*" NotificationRecord : contains
+    EventRecord --> UserRecord : createdBy and RSVP IDs
+    NotificationRecord --> UserRecord : recipientId
 ```
+
+Registration creates a session immediately. On reload, the browser checks its
+saved token; logging out invalidates it on the server.
+
+```mermaid
+sequenceDiagram
+    actor U as User
+    participant UI as Web UI
+    participant API as API Server
+    participant Auth as Auth service
+    participant Users as User store / users.json
+    participant Sessions as In-memory sessions
+    participant Local as Browser local storage
+
+    U->>UI: Submit registration
+    UI->>API: POST /api/auth/register
+    API->>Auth: register account
+    Auth->>Users: Check email and save salted hash
+    Auth->>Sessions: Create eight-hour session
+    Auth-->>API: Token and public user
+    API-->>UI: 201 Created
+    UI->>Local: Save token
+    U->>UI: Reload page
+    UI->>Local: Read token
+    UI->>API: GET /api/auth/me with bearer token
+    API->>Auth: Validate token
+    Auth->>Sessions: Look up session
+    API-->>UI: Public user, or 401 if invalid
+    U->>UI: Log out from Account
+    UI->>API: POST /api/auth/logout with bearer token
+    API->>Auth: Validate and remove session
+    Auth->>Sessions: Delete token
+    API-->>UI: Logged out
+    UI->>Local: Remove token
+```
+
+Event updates and cancellations create notifications for members who RSVP'd.
+Notifications load on sign-in or reload and can also be refreshed on demand; the
+application does not send email or push updates.
 
 ```mermaid
 sequenceDiagram
     actor O as Organizer
     actor M as Member
     participant UI as Web UI
-    participant API as API Server
-    participant D as Domain Rules
-    participant DB as Database
-    participant N as Notification Service
+    participant API as Express API
+    participant Service as Event service
+    participant Rules as Event domain rules
+    participant Store as Event store / events.json
 
-    O->>UI: Create event form
-    UI->>API: POST /events
-    API->>D: validate event details
-    D->>DB: check venue conflicts / capacity
-    DB-->>D: no conflicts
-    D-->>API: valid event
-    API->>DB: save event
-    DB-->>API: saved
-    API-->>UI: event created
-
+    O->>UI: Submit event
+    UI->>API: POST /api/events with bearer token
+    API->>API: Authenticate and authorize organizer
+    API->>Service: createEvent
+    Service->>Rules: Validate fields
+    Service->>Store: Find existing events
+    Service->>Rules: Check venue conflicts
+    alt Valid and no conflict
+        Service->>Store: Save event
+        API-->>UI: 201 Created
+    else Invalid or conflicting
+        API-->>UI: 400 or 409 error
+    end
     M->>UI: RSVP to event
-    UI->>API: POST /events/:id/rsvp
-    API->>D: addRsvp(userId)
-    D->>DB: check current RSVPs / capacity
-    DB-->>D: status
-    D-->>API: RSVP accepted or locked
-    API->>DB: persist RSVP
-    API->>N: send in-app / email alert
-    API-->>UI: success or full/locked message
+    UI->>API: POST /api/events/:id/rsvp with bearer token
+    API->>API: Authenticate and authorize member
+    API->>Service: rsvpForEvent
+    Service->>Store: Find event
+    Service->>Rules: Validate RSVP and capacity
+    alt New RSVP accepted
+        Service->>Store: Save RSVP and status
+        API-->>UI: 201 Created
+    else Already RSVP'd
+        API-->>UI: 200 OK
+    else Not open or full
+        API-->>UI: 409 error
+    end
+    O->>UI: Update event details
+    UI->>API: PUT /api/events/:id with bearer token
+    API->>API: Authenticate and authorize organizer
+    API->>Service: Validate ownership and update
+    Service->>Store: Save event and RSVP recipients' notifications
+    API-->>UI: Updated event
+    O->>UI: Confirm cancellation
+    UI->>API: POST /api/events/:id/cancel with bearer token
+    API->>API: Authenticate and authorize organizer
+    API->>Service: Cancel event after ownership check
+    Service->>Store: Save cancelled status and RSVP recipients' notifications
+    API-->>UI: Cancelled event
+    M->>UI: Load notifications
+    UI->>API: GET /api/events/notifications with bearer token
+    API->>Service: Retrieve notifications for member
+    Service->>Store: Find notifications
+    API-->>UI: Member notifications
 ```
+
+## Accounts and demo limitations
+
+You can create a local account with a unique email address and a password of 8–128 characters, or use these demo accounts:
+
+| Role | Email | Password |
+|------|-------|----------|
+| Organizer | `organizer@example.edu` | `organizer-demo` |
+| Member | `member@example.edu` | `member-demo` |
+
+- Sessions survive browser reloads but expire after eight hours, on server restart, or on logout.
+- Demo passwords can be overridden with `DEMO_ORGANIZER_PASSWORD` and `DEMO_MEMBER_PASSWORD`; both must be set if `NODE_ENV=production`.
+- This is a local demo, not production authentication: anyone can choose the organizer role, tokens are stored in browser local storage, and there is no university SSO.
+
+### How data is stored
+
+The demo uses local JSON files instead of a database. The server loads them into memory when it starts and writes changes back as users register or events change:
+
+- **Accounts:** `data/users.json` stores registered users' names, email addresses, roles, IDs, and salted password hashes—not plaintext passwords. The built-in demo accounts are kept in memory instead. Set `USERS_FILE` before starting the server to use a different file.
+- **Events:** `data/events.json` stores event details, organizer IDs, RSVPs, statuses, and in-app notifications. Set `EVENTS_FILE` before starting the server to use a different file.
+- **Sessions:** Active sessions are held in server memory; the browser saves the session token in local storage to restore the login after a reload. Server restarts clear sessions, but not saved accounts or events.
+
+The `data/` directory is ignored by Git. Keep these files and any alternative storage paths private and out of version control. Use one server process per user file; the simple store does not coordinate writes between processes.
+
+In future development, the JSON files could be replaced with a database that supports concurrent users, reliable updates, and backups. Account authentication could move to a university SSO provider, with secure server-managed sessions instead of browser-stored tokens. These are potential improvements, not features of the current demo.
 
 ## Architecture Decision Records
 

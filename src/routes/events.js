@@ -62,6 +62,24 @@ router.put('/:id', authenticate, authorize('organizer'), async (req, res) => {
   });
 });
 
+router.post('/:id/cancel', authenticate, authorize('organizer'), async (req, res) => {
+  try {
+    const result = await eventService.cancelEvent(req.params.id, req.user.id);
+    return res.status(result.statusCode).json({
+      success: result.success,
+      data: result.data,
+      error: result.error
+    });
+  } catch (error) {
+    console.error('Unable to cancel event:', error);
+    return res.status(500).json({
+      success: false,
+      data: null,
+      error: 'Unable to cancel event. Please try again.'
+    });
+  }
+});
+
 router.post('/:id/rsvp', authenticate, authorize('member'), async (req, res) => {
   const result = await eventService.rsvpForEvent(req.params.id, req.user.id);
   return res.status(result.statusCode).json({

@@ -7,11 +7,11 @@
   <style>
     body { font-family: sans-serif; max-width: 760px; margin: 2rem auto; padding: 0 1rem; }
     label { display: block; margin: .5rem 0; }
-    input, textarea { padding: .3rem; width: 100%; box-sizing: border-box; }
+    input, textarea, select { padding: .3rem; width: 100%; box-sizing: border-box; }
     button { padding: .5rem 1rem; margin: .5rem .3rem .5rem 0; }
-    #message, #login-message { margin: 1rem 0; padding: .6rem; border-radius: 4px; display: none; }
-    #message.ok, #login-message.ok { background: #d9f7d9; display: block; }
-    #message.error, #login-message.error { background: #fbdada; display: block; }
+    #message, #login-message, #register-message { margin: 1rem 0; padding: .6rem; border-radius: 4px; display: none; }
+    #message.ok, #login-message.ok, #register-message.ok { background: #d9f7d9; display: block; }
+    #message.error, #login-message.error, #register-message.error { background: #fbdada; display: block; }
     table { width: 100%; border-collapse: collapse; margin-top: .5rem; }
     th, td { border-bottom: 1px solid #ccc; padding: .4rem; text-align: left; }
     [hidden] { display: none !important; }
@@ -20,7 +20,8 @@
 <body>
   <h1>Event Management System</h1>
 
-  <section id="login-section">
+  <p id="session-loading" role="status">Checking your session...</p>
+  <section id="login-section" hidden>
     <h2>Sign in</h2>
     <form id="login-form">
       <label>Email <input id="email" type="email" autocomplete="username" required></label>
@@ -28,14 +29,38 @@
       <button type="submit">Log in</button>
     </form>
     <p>Demo accounts: organizer@example.edu / organizer-demo and member@example.edu / member-demo.</p>
+    <button id="show-register" type="button">Create account</button>
     <div id="login-message" role="status"></div>
+    <button id="retry-session" type="button" hidden>Retry session</button>
+  </section>
+
+  <section id="register-section" hidden>
+    <h2>Create account</h2>
+    <form id="register-form">
+      <label>Name <input id="register-name" type="text" autocomplete="name" maxlength="100" required></label>
+      <label>Email <input id="register-email" type="email" autocomplete="email" maxlength="254" required></label>
+      <label>Password <input id="register-password" type="password" autocomplete="new-password" minlength="8" maxlength="128" required></label>
+      <label>Role
+        <select id="register-role" required>
+          <option value="member">Member</option>
+          <option value="organizer">Organizer</option>
+        </select>
+      </label>
+      <button type="submit">Create account</button>
+      <button id="show-login" type="button">Back to sign in</button>
+    </form>
+    <div id="register-message" role="status"></div>
   </section>
 
   <main id="application" hidden>
-    <p>Signed in as <span id="current-user"></span> (<span id="current-role"></span>)
-      <button id="logout" type="button">Log out</button>
-    </p>
+    <p>Signed in as <span id="current-user"></span> (<span id="current-role"></span>)</p>
+    <nav aria-label="Account navigation">
+      <button id="show-dashboard" type="button">Dashboard</button>
+      <button id="show-account" type="button">Account</button>
+    </nav>
+    <div id="message" role="status"></div>
 
+    <div id="dashboard">
     <section id="organizer-section" hidden>
       <h2>Manage events</h2>
       <form id="event-form">
@@ -49,8 +74,6 @@
         <button id="cancel-edit" type="button" hidden>Cancel edit</button>
       </form>
     </section>
-
-    <div id="message" role="status"></div>
 
     <h2>Upcoming events</h2>
     <table>
@@ -73,15 +96,30 @@
       <button id="load-notifications" type="button">Load notifications</button>
       <ul id="notifications"></ul>
     </section>
+    </div>
+
+    <section id="account-section" hidden>
+      <h2>Account</h2>
+      <p>Name: <span id="account-name"></span></p>
+      <p>Email: <span id="account-email"></span></p>
+      <p>Role: <span id="account-role"></span></p>
+      <button id="logout" type="button">Log out</button>
+    </section>
   </main>
 
   <script>
     const loginSection = document.getElementById('login-section');
+    const registerSection = document.getElementById('register-section');
+    const registerForm = document.getElementById('register-form');
+    const registerMessage = document.getElementById('register-message');
     const application = document.getElementById('application');
     const loginMessage = document.getElementById('login-message');
     const message = document.getElementById('message');
     const eventsBody = document.getElementById('events');
     const eventForm = document.getElementById('event-form');
+    const sessionLoading = document.getElementById('session-loading');
+    const retrySession = document.getElementById('retry-session');
+    const tokenKey = 'event-management-token';
     let token = null;
     let currentUser = null;
     let editingEventId = null;
@@ -100,22 +138,98 @@
       const response = await fetch(path, { ...options, headers });
       const body = await response.json();
       if (!response.ok) {
-        throw new Error(body.error || 'The request could not be completed');
+        const error = new Error(body.error || 'The request could not be completed');
+        error.status = response.status;
+        if (response.status === 401 && token && path !== '/api/auth/login') {
+          setLoggedOut('Your session has ended. Please sign in again.');
+        }
+        throw error;
       }
       return body;
     }
 
-    function setLoggedOut() {
+    function setLoggedOut(reason = '') {
       token = null;
       currentUser = null;
+      try {
+        localStorage.removeItem(tokenKey);
+      } catch (error) {
+        reason = `${reason} Unable to clear the saved session from this browser.`.trim();
+      }
+      if (reason) showMessage(loginMessage, reason, false);
+      else loginMessage.className = '';
+      sessionLoading.hidden = true;
+      retrySession.hidden = true;
       loginSection.hidden = false;
+      registerSection.hidden = true;
       application.hidden = true;
       document.getElementById('password').value = '';
+      registerForm.reset();
+      registerMessage.className = '';
       eventForm.reset();
       eventForm.querySelector('button[type="submit"]').textContent = 'Create event';
       document.getElementById('cancel-edit').hidden = true;
       editingEventId = null;
       eventsBody.replaceChildren();
+      document.getElementById('notifications').replaceChildren();
+    }
+
+    function showView(account) {
+      document.getElementById('dashboard').hidden = account;
+      document.getElementById('account-section').hidden = !account;
+      message.className = '';
+    }
+
+    async function setLoggedIn(user) {
+      currentUser = user;
+      document.getElementById('current-user').textContent = user.name;
+      document.getElementById('current-role').textContent = user.role;
+      document.getElementById('account-name').textContent = user.name;
+      document.getElementById('account-email').textContent = user.email;
+      document.getElementById('account-role').textContent = user.role;
+      document.getElementById('organizer-section').hidden = user.role !== 'organizer';
+      document.getElementById('member-section').hidden = user.role !== 'member';
+      document.getElementById('password').value = '';
+      sessionLoading.hidden = true;
+      retrySession.hidden = true;
+      loginSection.hidden = true;
+      registerSection.hidden = true;
+      application.hidden = false;
+      showView(false);
+      try {
+        await loadEvents();
+      } catch (error) {
+        if (error.status !== 401) showMessage(message, error.message, false);
+      }
+      if (currentUser && currentUser.role === 'member') {
+        try {
+          await loadNotifications();
+        } catch (error) {
+          if (error.status !== 401) showMessage(message, error.message, false);
+        }
+      }
+    }
+
+    async function restoreSession() {
+      sessionLoading.hidden = false;
+      loginSection.hidden = true;
+      retrySession.hidden = true;
+      try {
+        token = localStorage.getItem(tokenKey);
+        if (!token) {
+          setLoggedOut();
+          return;
+        }
+        const result = await api('/api/auth/me');
+        await setLoggedIn(result.data);
+      } catch (error) {
+        if (error.status === 401) return;
+        token = null;
+        sessionLoading.hidden = true;
+        loginSection.hidden = false;
+        retrySession.hidden = false;
+        showMessage(loginMessage, `Unable to restore your session: ${error.message}`, false);
+      }
     }
 
     async function loadEvents() {
@@ -152,6 +266,25 @@
             document.getElementById('cancel-edit').hidden = false;
           });
           actions.appendChild(editButton);
+          if (event.status !== 'cancelled') {
+            const cancelButton = document.createElement('button');
+            cancelButton.type = 'button';
+            cancelButton.textContent = 'Cancel event';
+            cancelButton.addEventListener('click', async () => {
+              if (!window.confirm(`Cancel "${event.title}"? Members who RSVP'd will be notified.`)) return;
+              cancelButton.disabled = true;
+              try {
+                await api(`/api/events/${encodeURIComponent(event.id)}/cancel`, { method: 'POST' });
+                if (editingEventId === event.id) resetEventForm();
+                await loadEvents();
+                showMessage(message, `Cancelled "${event.title}".`, true);
+              } catch (error) {
+                cancelButton.disabled = false;
+                if (error.status !== 401) showMessage(message, error.message, false);
+              }
+            });
+            actions.appendChild(cancelButton);
+          }
         } else {
           const rsvpButton = document.createElement('button');
           rsvpButton.type = 'button';
@@ -191,21 +324,64 @@
         return;
       }
 
-      token = result.data.token;
-      currentUser = result.data.user;
-      document.getElementById('current-user').textContent = currentUser.name;
-      document.getElementById('current-role').textContent = currentUser.role;
-      document.getElementById('organizer-section').hidden = currentUser.role !== 'organizer';
-      document.getElementById('member-section').hidden = currentUser.role !== 'member';
-      loginSection.hidden = true;
-      application.hidden = false;
-      message.className = '';
+      await startSession(result.data);
+    });
+
+    async function startSession(data) {
+      token = data.token;
+      let storageError = null;
       try {
-        await loadEvents();
+        localStorage.setItem(tokenKey, token);
       } catch (error) {
-        showMessage(message, error.message, false);
+        storageError = error;
+      }
+      await setLoggedIn(data.user);
+      if (storageError && currentUser) {
+        showMessage(message, 'Unable to save your session in this browser. You will need to sign in again after reloading.', false);
+      }
+    }
+
+    document.getElementById('show-register').addEventListener('click', () => {
+      loginSection.hidden = true;
+      registerSection.hidden = false;
+      registerMessage.className = '';
+    });
+    document.getElementById('show-login').addEventListener('click', () => {
+      registerForm.reset();
+      registerSection.hidden = true;
+      loginSection.hidden = false;
+    });
+    registerForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      registerMessage.className = '';
+      try {
+        const result = await api('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: document.getElementById('register-name').value,
+            email: document.getElementById('register-email').value,
+            password: document.getElementById('register-password').value,
+            role: document.getElementById('register-role').value
+          })
+        });
+        registerForm.reset();
+        await startSession(result.data);
+      } catch (error) {
+        showMessage(registerMessage, error.message, false);
       }
     });
+
+    document.getElementById('show-dashboard').addEventListener('click', () => showView(false));
+    document.getElementById('show-account').addEventListener('click', () => showView(true));
+    retrySession.addEventListener('click', restoreSession);
+
+    function resetEventForm() {
+      editingEventId = null;
+      eventForm.reset();
+      eventForm.querySelector('button[type="submit"]').textContent = 'Create event';
+      document.getElementById('cancel-edit').hidden = true;
+    }
 
     eventForm.addEventListener('submit', async (event) => {
       event.preventDefault();
@@ -229,35 +405,31 @@
         );
         const action = editingEventId ? 'Updated' : 'Created';
         showMessage(message, `${action} "${result.data.title}".`, true);
-        eventForm.reset();
-        editingEventId = null;
-        eventForm.querySelector('button[type="submit"]').textContent = 'Create event';
-        document.getElementById('cancel-edit').hidden = true;
+        resetEventForm();
         await loadEvents();
       } catch (error) {
         showMessage(message, error.message, false);
       }
     });
 
-    document.getElementById('cancel-edit').addEventListener('click', () => {
-      editingEventId = null;
-      eventForm.reset();
-      eventForm.querySelector('button[type="submit"]').textContent = 'Create event';
-      document.getElementById('cancel-edit').hidden = true;
-    });
+    document.getElementById('cancel-edit').addEventListener('click', resetEventForm);
+
+    async function loadNotifications() {
+      const result = await api('/api/events/notifications');
+      const list = document.getElementById('notifications');
+      list.replaceChildren();
+      for (const notification of result.data) {
+        const item = document.createElement('li');
+        item.textContent = `${notification.message} (${notification.createdAt})`;
+        list.appendChild(item);
+      }
+    }
 
     document.getElementById('load-notifications').addEventListener('click', async () => {
       try {
-        const result = await api('/api/events/notifications');
-        const list = document.getElementById('notifications');
-        list.replaceChildren();
-        for (const notification of result.data) {
-          const item = document.createElement('li');
-          item.textContent = `${notification.message} (${notification.createdAt})`;
-          list.appendChild(item);
-        }
+        await loadNotifications();
       } catch (error) {
-        showMessage(message, error.message, false);
+        if (error.status !== 401) showMessage(message, error.message, false);
       }
     });
 
@@ -266,9 +438,11 @@
         await api('/api/auth/logout', { method: 'POST' });
         setLoggedOut();
       } catch (error) {
-        showMessage(message, error.message, false);
+        if (error.status !== 401) showMessage(message, error.message, false);
       }
     });
+
+    restoreSession();
   </script>
 </body>
 </html>
