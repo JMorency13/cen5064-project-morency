@@ -347,7 +347,17 @@ function createEventService({ eventStore, userStore }) {
     
     // Resolve attendee IDs to names using userStore
     let attendees = [];
-    if (userStore && typeof userStore.findById === 'function') {
+    if (userStore && typeof userStore.findByIdAsync === 'function') {
+      // Use async method for database support
+      attendees = await Promise.all(attendeeIds.map(async (id) => {
+        const user = await userStore.findByIdAsync(id);
+        return {
+          id,
+          name: user ? user.name : 'Unknown User'
+        };
+      }));
+    } else if (userStore && typeof userStore.findById === 'function') {
+      // Fallback to sync method for JSON store
       attendees = attendeeIds.map((id) => {
         const user = userStore.findById(id);
         return {

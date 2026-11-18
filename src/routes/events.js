@@ -2,13 +2,20 @@ const express = require('express');
 const router = express.Router();
 
 const eventStore = require('../data/eventStore');
+const eventStoreDb = require('../data/eventStoreDb');
 const userStore = require('../data/userStore');
+const userStoreDb = require('../data/userStoreDb');
 const { createDashboardService } = require('../services/dashboardService');
 const { createEventService } = require('../services/eventService');
 const { authenticate, authorize } = require('../middleware/auth');
 
-const dashboardService = createDashboardService({ eventStore });
-const eventService = createEventService({ eventStore, userStore });
+// Use database or JSON store based on USE_DATABASE flag
+const useDatabase = process.env.USE_DATABASE === 'true';
+const activeEventStore = useDatabase ? eventStoreDb : eventStore;
+const activeUserStore = useDatabase ? userStoreDb : userStore;
+
+const dashboardService = createDashboardService({ eventStore: activeEventStore });
+const eventService = createEventService({ eventStore: activeEventStore, userStore: activeUserStore });
 
 // GET /api/events/notifications (Notifications for the signed-in member)
 router.get('/notifications', authenticate, async (req, res) => {
