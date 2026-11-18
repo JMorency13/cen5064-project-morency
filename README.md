@@ -33,11 +33,11 @@ npm install
 npm start
 ```
 
-Open http://localhost:3000. To use a different port, set `PORT` first: `PORT=4000 npm start` (Mac/Linux), `$env:PORT=4000; npm start` (Windows PowerShell), or `set PORT=4000 && npm start` (Windows cmd).
+The browser will automatically open to http://localhost:3000. To use a different port, set `PORT` first: `PORT=4000 npm start` (Mac/Linux), `$env:PORT=4000; npm start` (Windows PowerShell), or `set PORT=4000 && npm start` (Windows cmd).
 
 **Data storage:**
 - By default, events and users are saved to JSON files: `data/events.json` and `data/users.json`
-- To use a database instead (SQLite or PostgreSQL), run `node scripts/migrate.js` to initialize the database, then start the server with `USE_DATABASE=true npm start`
+- To use a database instead (SQLite), run `node scripts/migrate.js` to initialize the database, then start the server with `USE_DATABASE=true npm start`
 - Database path: Set `DATABASE_FILE` to customize the SQLite database location (default: `data/events.db`)
 
 Run the tests with `npm test`.

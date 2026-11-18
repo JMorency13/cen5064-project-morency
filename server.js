@@ -1,5 +1,6 @@
 const path = require('path');
 const express = require('express');
+const open = require('open');
 const eventsRouter = require('./src/routes/events');
 const authRouter = require('./src/routes/auth');
 const eventStore = require('./src/data/eventStore');
@@ -31,7 +32,10 @@ if (require.main === module) {
   }
 
   app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+    const url = `http://localhost:${PORT}`;
+    console.log(`Server running on ${url}`);
+    console.log('Opening browser...');
+    open(url);
   });
 }
 
