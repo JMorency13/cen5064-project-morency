@@ -687,9 +687,9 @@
       <!-- Calendar View (DEFAULT) -->
       <div style="margin-top: 2rem;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-          <button id="prev-month" type="button" style="background: var(--gray-200); border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer;">← Previous</button>
+          <button id="prev-month" type="button" style="background: var(--primary); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-weight: 500;">← Previous</button>
           <h2 id="calendar-month" style="margin: 0; min-width: 200px; text-align: center;"></h2>
-          <button id="next-month" type="button" style="background: var(--gray-200); border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer;">Next →</button>
+          <button id="next-month" type="button" style="background: var(--primary); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-weight: 500;">Next →</button>
         </div>
         <div id="calendar-grid" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.5rem;"></div>
       </div>
@@ -1260,7 +1260,7 @@
         accountBackButton.setAttribute('data-back-button', 'true');
         accountBackButton.textContent = '← Back to Dashboard';
         accountBackButton.type = 'button';
-        accountBackButton.style.cssText = 'background: var(--gray-200); border: none; padding: 0.6rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 500; margin-bottom: 1rem;';
+        accountBackButton.style.cssText = 'background: var(--primary); color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 500; margin-bottom: 1rem;';
         accountBackButton.addEventListener('click', () => showView(false));
         accountSection.insertBefore(accountBackButton, accountSection.firstChild);
       }
