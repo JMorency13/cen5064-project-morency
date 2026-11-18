@@ -619,6 +619,12 @@
       <div style="display: flex; gap: 1rem; align-items: center;">
         <span id="current-user" style="color: var(--gray-700); font-weight: 500;"></span>
         <span id="current-role" hidden></span>
+        <div style="position: relative;">
+          <button id="notifications-btn" type="button" style="background: var(--primary); color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 500;">🔔 Notifications</button>
+          <div id="notifications-popup" hidden style="position: absolute; top: 100%; right: 0; background: white; border: 1px solid var(--gray-200); border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); min-width: 300px; max-width: 400px; max-height: 400px; overflow-y: auto; z-index: 1000; margin-top: 0.5rem;">
+            <ul id="notifications" style="list-style: none; padding: 1rem; margin: 0;"></ul>
+          </div>
+        </div>
         <button id="show-account" type="button" style="background: var(--primary); color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 500;">Account</button>
         <button id="show-dashboard" type="button" hidden>Dashboard</button>
       </div>
@@ -717,8 +723,7 @@
         <button id="toggle-member-calendar" type="button" style="background: var(--primary); color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 500;">📅 View Calendar</button>
       </div>
 
-      <button id="load-notifications" type="button">Load notifications</button>
-      <ul id="notifications"></ul>
+      <button id="load-notifications" type="button" hidden>Load notifications</button>
 
       <div id="member-events-container">
         <!-- Table View (DEFAULT) -->
@@ -1435,6 +1440,24 @@
         showMessage(registerMessage, error.message, false);
       }
     });
+
+    // Handle Notifications popup toggle
+    const notificationsBtn = document.getElementById('notifications-btn');
+    const notificationsPopup = document.getElementById('notifications-popup');
+    if (notificationsBtn && notificationsPopup) {
+      notificationsBtn.addEventListener('click', () => {
+        notificationsPopup.hidden = !notificationsPopup.hidden;
+      });
+
+      // Close popup when clicking outside (if document event listener is available)
+      if (document && typeof document.addEventListener === 'function') {
+        document.addEventListener('click', (e) => {
+          if (!notificationsBtn.contains(e.target) && !notificationsPopup.contains(e.target)) {
+            notificationsPopup.hidden = true;
+          }
+        });
+      }
+    }
 
     document.getElementById('show-account').addEventListener('click', () => {
       showView(true);
