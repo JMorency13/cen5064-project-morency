@@ -1,6 +1,5 @@
 const path = require('path');
 const express = require('express');
-const open = require('open');
 const eventsRouter = require('./src/routes/events');
 const authRouter = require('./src/routes/auth');
 const eventStore = require('./src/data/eventStore');
@@ -31,11 +30,16 @@ if (require.main === module) {
     userStoreDb.init(false);
   }
 
-  app.listen(PORT, () => {
+  app.listen(PORT, async () => {
     const url = `http://localhost:${PORT}`;
     console.log(`Server running on ${url}`);
     console.log('Opening browser...');
-    open(url);
+    try {
+      const open = await import('open');
+      await open.default(url);
+    } catch (error) {
+      console.log('Could not open browser automatically. Please open manually: ' + url);
+    }
   });
 }
 
