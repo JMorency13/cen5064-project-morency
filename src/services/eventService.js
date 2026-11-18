@@ -300,6 +300,38 @@ function createEventService({ eventStore, userStore }) {
     return buildRsvpSuccessResponse(savedEvent, 201);
   }
 
+  async function unRsvpForEvent(eventId, memberId) {
+    if (!memberId) {
+      return buildErrorResponse('Member ID is required', 401);
+    }
+
+    const events = await eventStore.findAll();
+    const event = events.find((savedEvent) => savedEvent.id === eventId);
+
+    if (!event) {
+      return buildErrorResponse('Event not found', 404);
+    }
+
+    const rsvps = Array.isArray(event.rsvps) ? event.rsvps : [];
+    if (!rsvps.includes(memberId)) {
+      return buildErrorResponse('You have not RSVP\'d to this event', 400);
+    }
+
+    const updatedRsvps = rsvps.filter((id) => id !== memberId);
+    const updatedEvent = {
+      ...event,
+      rsvps: updatedRsvps,
+      status: updatedRsvps.length >= event.capacity ? 'full' : 'open'
+    };
+    const savedEvent = await eventStore.update(updatedEvent);
+
+    if (!savedEvent) {
+      return buildErrorResponse('Event not found', 404);
+    }
+
+    return buildRsvpSuccessResponse(savedEvent, 200);
+  }
+
   async function getNotificationsForUser(userId) {
     if (!userId) {
       return buildErrorResponse('User ID is required', 400);
@@ -394,6 +426,7 @@ function createEventService({ eventStore, userStore }) {
     updateEvent,
     cancelEvent,
     rsvpForEvent,
+    unRsvpForEvent,
     getNotificationsForUser,
     getEventAttendees,
     validateAndCheckConflicts

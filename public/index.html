@@ -677,6 +677,7 @@
           <button id="edit-event-button" type="button" style="background: var(--primary); color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 500;">Edit Event</button>
           <button id="view-attendees-button" type="button" style="background: var(--secondary); color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 500;">View Attendees</button>
           <button id="cancel-event-button" type="button" style="background: var(--danger); color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 500;" hidden>Cancel Event</button>
+          <button id="cancel-rsvp-button" type="button" style="background: var(--danger); color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 500;" hidden>Cancel RSVP</button>
         </div>
       </section>
     </div>
@@ -1044,7 +1045,15 @@
           eventDiv.textContent = event.title;
           eventDiv.addEventListener('click', (e) => {
             e.stopPropagation();
-            // Could show event details here if desired
+            // Show event details modal for members
+            currentEventBeingViewed = event;
+            document.getElementById('event-details-content').innerHTML = formatEventDetails(event);
+            document.getElementById('edit-event-button').hidden = true;
+            document.getElementById('view-attendees-button').hidden = true;
+            document.getElementById('cancel-event-button').hidden = true;
+            document.getElementById('cancel-rsvp-button').hidden = false;
+            document.getElementById('event-details-modal-overlay').removeAttribute('hidden');
+            document.getElementById('event-details-modal-overlay').style.display = 'flex';
           });
           dayCell.appendChild(eventDiv);
         }
@@ -1171,6 +1180,23 @@
           showMessage(message, `Cancelled "${currentEventBeingViewed.title}".`, true);
           document.getElementById('event-details-modal-overlay').setAttribute('hidden', '');
           document.getElementById('event-details-modal-overlay').style.display = 'none';
+        } catch (error) {
+          if (error.status !== 401) showMessage(message, error.message, false);
+        }
+      }
+    });
+
+    // Handle Cancel RSVP from details modal
+    document.getElementById('cancel-rsvp-button')?.addEventListener('click', async () => {
+      if (currentEventBeingViewed) {
+        if (!window.confirm(`Leave "${currentEventBeingViewed.title}"? Your RSVP will be cancelled.`)) return;
+        try {
+          await api(`/api/events/${encodeURIComponent(currentEventBeingViewed.id)}/rsvp`, { method: 'DELETE' });
+          await loadEvents();
+          showMessage(message, `Cancelled your RSVP for "${currentEventBeingViewed.title}".`, true);
+          document.getElementById('event-details-modal-overlay').setAttribute('hidden', '');
+          document.getElementById('event-details-modal-overlay').style.display = 'none';
+          renderMemberCalendar(); // Refresh calendar to remove event
         } catch (error) {
           if (error.status !== 401) showMessage(message, error.message, false);
         }

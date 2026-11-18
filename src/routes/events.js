@@ -113,4 +113,14 @@ router.post('/:id/rsvp', authenticate, authorize('member'), async (req, res) => 
   });
 });
 
+// DELETE /api/events/:id/rsvp (Cancel RSVP - member leaves event)
+router.delete('/:id/rsvp', authenticate, authorize('member'), async (req, res) => {
+  const result = await eventService.unRsvpForEvent(req.params.id, req.user.id);
+  return res.status(result.statusCode).json({
+    success: result.success,
+    data: result.data,
+    error: result.error
+  });
+});
+
 module.exports = router;
