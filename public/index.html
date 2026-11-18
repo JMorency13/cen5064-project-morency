@@ -619,13 +619,13 @@
       <div style="display: flex; gap: 1rem; align-items: center;">
         <span id="current-user" style="color: var(--gray-700); font-weight: 500;"></span>
         <span id="current-role" hidden></span>
+        <button id="show-account" type="button" style="background: var(--primary); color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 500;">Account</button>
         <div style="position: relative;">
           <button id="notifications-btn" type="button" style="background: var(--primary); color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 500;">🔔 Notifications</button>
           <div id="notifications-popup" hidden style="position: absolute; top: 100%; right: 0; background: white; border: 1px solid var(--gray-200); border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); min-width: 300px; max-width: 400px; max-height: 400px; overflow-y: auto; z-index: 1000; margin-top: 0.5rem;">
             <ul id="notifications" style="list-style: none; padding: 1rem; margin: 0;"></ul>
           </div>
         </div>
-        <button id="show-account" type="button" style="background: var(--primary); color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 500;">Account</button>
         <button id="show-dashboard" type="button" hidden>Dashboard</button>
       </div>
     </div>
@@ -720,13 +720,12 @@
     <section id="member-section" hidden>
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
         <h2 style="margin: 0;">Available Events</h2>
-        <button id="toggle-member-calendar" type="button" style="background: var(--primary); color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 500;">📅 View Calendar</button>
       </div>
 
       <button id="load-notifications" type="button" hidden>Load notifications</button>
 
       <div id="member-events-container">
-        <!-- Table View (DEFAULT) -->
+        <!-- Table View -->
         <table id="member-events-table-view">
           <thead>
             <tr>
@@ -741,20 +740,19 @@
           </thead>
           <tbody id="member-events"></tbody>
         </table>
+      </div>
 
-        <!-- Calendar View (Hidden by default) -->
-        <div id="member-calendar-view" hidden style="margin-top: 2rem;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-            <button id="member-prev-month" type="button" style="background: var(--primary); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-weight: 500;">← Previous</button>
-            <h2 id="member-calendar-month" style="margin: 0; min-width: 200px; text-align: center;"></h2>
-            <button id="member-next-month" type="button" style="background: var(--primary); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-weight: 500;">Next →</button>
-          </div>
-          <div id="member-calendar-grid" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.5rem;"></div>
-          <p style="color: #666; margin-top: 1rem; font-size: 0.9rem;">This calendar shows events you've RSVP'd to.</p>
+      <!-- Member Calendar (Always visible) -->
+      <div id="member-calendar-view" style="margin-top: 3rem;">
+        <h2 style="margin-bottom: 1rem;">Your RSVP'd Events</h2>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+          <button id="member-prev-month" type="button" style="background: var(--primary); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-weight: 500;">← Previous</button>
+          <h3 id="member-calendar-month" style="margin: 0; min-width: 200px; text-align: center;"></h3>
+          <button id="member-next-month" type="button" style="background: var(--primary); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-weight: 500;">Next →</button>
         </div>
+        <div id="member-calendar-grid" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.5rem;"></div>
       </div>
     </section>
-    </div>
 
     <section id="account-section" hidden>
       <h2>Account</h2>
@@ -781,6 +779,9 @@
     let token = null;
     let currentUser = null;
     let editingEventId = null;
+
+    // Use sessionStorage for separate browser windows, fallback to localStorage for tests
+    const storage = typeof sessionStorage !== 'undefined' ? sessionStorage : (typeof localStorage !== 'undefined' ? localStorage : {});
 
     function showMessage(element, text, success) {
       element.textContent = text;
@@ -810,7 +811,7 @@
       token = null;
       currentUser = null;
       try {
-        localStorage.removeItem(tokenKey);
+        storage.removeItem(tokenKey);
       } catch (error) {
         reason = `${reason} Unable to clear the saved session from this browser.`.trim();
       }
@@ -873,7 +874,7 @@
       loginSection.hidden = true;
       retrySession.hidden = true;
       try {
-        token = localStorage.getItem(tokenKey);
+        token = storage.getItem(tokenKey);
         if (!token) {
           setLoggedOut();
           return;
@@ -893,7 +894,6 @@
     let calendarCurrentDate = new Date();
     let memberCalendarCurrentDate = new Date();
     let allEvents = [];
-    let isMemberCalendarVisible = false;
 
     function renderCalendar() {
       const grid = document.getElementById('calendar-grid');
@@ -1187,23 +1187,6 @@
     });
 
     // Member calendar navigation
-    const toggleMemberCalendarBtn = document.getElementById('toggle-member-calendar');
-    if (toggleMemberCalendarBtn) {
-      toggleMemberCalendarBtn.addEventListener('click', () => {
-        const tableView = document.getElementById('member-events-table-view');
-        const calendarView = document.getElementById('member-calendar-view');
-        isMemberCalendarVisible = !isMemberCalendarVisible;
-        if (tableView) tableView.hidden = isMemberCalendarVisible;
-        if (calendarView) calendarView.hidden = !isMemberCalendarVisible;
-        if (toggleMemberCalendarBtn) {
-          toggleMemberCalendarBtn.textContent = isMemberCalendarVisible ? '📋 View Available' : '📅 View Calendar';
-        }
-        if (isMemberCalendarVisible) {
-          renderMemberCalendar();
-        }
-      });
-    }
-
     const memberPrevBtn = document.getElementById('member-prev-month');
     if (memberPrevBtn) {
       memberPrevBtn.addEventListener('click', () => {
@@ -1400,7 +1383,7 @@
       token = data.token;
       let storageError = null;
       try {
-        localStorage.setItem(tokenKey, token);
+        storage.setItem(tokenKey, token);
       } catch (error) {
         storageError = error;
       }

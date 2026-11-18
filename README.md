@@ -43,7 +43,7 @@ Open http://localhost:3000. To use a different port, set `PORT` first: `PORT=400
 Run the tests with `npm test`.
 
 **Testing with multiple browser instances:**
-To test with both organizer and member accounts simultaneously (e.g., to simulate notifications), use **incognito/private windows** or **different browsers**. The browser's local storage is shared across all tabs on the same domain in normal mode, so opening two regular browser windows on http://localhost:3000 will cause them to share the same session token.
+You can now test with both organizer and member accounts simultaneously in separate browser windows on the same domain. Each window maintains its own session using browser sessionStorage (not localStorage), so they won't interfere with each other.
 
 ### Organizer walkthrough
 
