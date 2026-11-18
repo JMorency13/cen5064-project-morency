@@ -712,9 +712,42 @@
     </div>
 
     <section id="member-section" hidden>
-      <h2>Member notifications</h2>
-      <button id="load-notifications" type="button">Load notifications</button>
-      <ul id="notifications"></ul>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2 style="margin: 0;">Available Events</h2>
+        <button id="toggle-member-calendar" type="button" style="background: var(--primary); color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 500;">📅 View Calendar</button>
+      </div>
+
+      <button id="load-notifications" type="button" hidden>Load notifications</button>
+      <ul id="notifications" hidden></ul>
+
+      <div id="member-events-container">
+        <!-- Table View (DEFAULT) -->
+        <table id="member-events-table-view">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Time</th>
+              <th>Title</th>
+              <th>Venue</th>
+              <th>Capacity</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="member-events"></tbody>
+        </table>
+
+        <!-- Calendar View (Hidden by default) -->
+        <div id="member-calendar-view" hidden style="margin-top: 2rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <button id="member-prev-month" type="button" style="background: var(--primary); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-weight: 500;">← Previous</button>
+            <h2 id="member-calendar-month" style="margin: 0; min-width: 200px; text-align: center;"></h2>
+            <button id="member-next-month" type="button" style="background: var(--primary); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-weight: 500;">Next →</button>
+          </div>
+          <div id="member-calendar-grid" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.5rem;"></div>
+          <p style="color: #666; margin-top: 1rem; font-size: 0.9rem;">This calendar shows events you've RSVP'd to.</p>
+        </div>
+      </div>
     </section>
     </div>
 
@@ -853,7 +886,9 @@
     }
 
     let calendarCurrentDate = new Date();
+    let memberCalendarCurrentDate = new Date();
     let allEvents = [];
+    let isMemberCalendarVisible = false;
 
     function renderCalendar() {
       const grid = document.getElementById('calendar-grid');
@@ -926,6 +961,84 @@
               document.getElementById('event-details-modal-overlay').removeAttribute('hidden');
               document.getElementById('event-details-modal-overlay').style.display = 'flex';
             }
+          });
+          dayCell.appendChild(eventDiv);
+        }
+
+        grid.appendChild(dayCell);
+      }
+    }
+
+    function renderMemberCalendar() {
+      const grid = document.getElementById('member-calendar-grid');
+      const monthLabel = document.getElementById('member-calendar-month');
+      if (!grid || !monthLabel) return; // Skip if elements not present
+
+      const year = memberCalendarCurrentDate.getFullYear();
+      const month = memberCalendarCurrentDate.getMonth();
+
+      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'];
+
+      monthLabel.textContent = `${monthNames[month]} ${year}`;
+
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+      const daysInMonth = lastDay.getDate();
+      const startingDayOfWeek = firstDay.getDay();
+
+      grid.replaceChildren();
+
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      for (const day of dayNames) {
+        const header = document.createElement('div');
+        header.style.fontWeight = 'bold';
+        header.style.padding = '0.5rem';
+        header.style.textAlign = 'center';
+        header.textContent = day;
+        grid.appendChild(header);
+      }
+
+      for (let i = 0; i < startingDayOfWeek; i++) {
+        grid.appendChild(document.createElement('div'));
+      }
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dayCell = document.createElement('div');
+        dayCell.style.border = '1px solid #e5e7eb';
+        dayCell.style.padding = '0.5rem';
+        dayCell.style.minHeight = '100px';
+        dayCell.style.overflowY = 'auto';
+        dayCell.style.cursor = 'pointer';
+        dayCell.style.backgroundColor = '#fafafa';
+
+        const dateLabel = document.createElement('div');
+        dateLabel.style.fontWeight = 'bold';
+        dateLabel.style.marginBottom = '0.25rem';
+        dateLabel.textContent = day.toString();
+        dayCell.appendChild(dateLabel);
+
+        const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        
+        // Show only events the member has RSVP'd to
+        const memberEvents = allEvents.filter(event => {
+          const rsvps = Array.isArray(event.rsvps) ? event.rsvps : [];
+          return event.date === dateString && rsvps.includes(currentUser?.id);
+        });
+
+        for (const event of memberEvents) {
+          const eventDiv = document.createElement('div');
+          eventDiv.style.backgroundColor = '#d1fae5';
+          eventDiv.style.border = '1px solid #10b981';
+          eventDiv.style.borderRadius = '4px';
+          eventDiv.style.padding = '0.25rem 0.5rem';
+          eventDiv.style.marginTop = '0.25rem';
+          eventDiv.style.fontSize = '0.85rem';
+          eventDiv.style.cursor = 'pointer';
+          eventDiv.textContent = event.title;
+          eventDiv.addEventListener('click', (e) => {
+            e.stopPropagation();
+            // Could show event details here if desired
           });
           dayCell.appendChild(eventDiv);
         }
@@ -1068,10 +1181,46 @@
       renderCalendar();
     });
 
+    // Member calendar navigation
+    const toggleMemberCalendarBtn = document.getElementById('toggle-member-calendar');
+    if (toggleMemberCalendarBtn) {
+      toggleMemberCalendarBtn.addEventListener('click', () => {
+        const tableView = document.getElementById('member-events-table-view');
+        const calendarView = document.getElementById('member-calendar-view');
+        isMemberCalendarVisible = !isMemberCalendarVisible;
+        if (tableView) tableView.hidden = isMemberCalendarVisible;
+        if (calendarView) calendarView.hidden = !isMemberCalendarVisible;
+        if (toggleMemberCalendarBtn) {
+          toggleMemberCalendarBtn.textContent = isMemberCalendarVisible ? '📋 View Available' : '📅 View Calendar';
+        }
+        if (isMemberCalendarVisible) {
+          renderMemberCalendar();
+        }
+      });
+    }
+
+    const memberPrevBtn = document.getElementById('member-prev-month');
+    if (memberPrevBtn) {
+      memberPrevBtn.addEventListener('click', () => {
+        memberCalendarCurrentDate.setMonth(memberCalendarCurrentDate.getMonth() - 1);
+        renderMemberCalendar();
+      });
+    }
+
+    const memberNextBtn = document.getElementById('member-next-month');
+    if (memberNextBtn) {
+      memberNextBtn.addEventListener('click', () => {
+        memberCalendarCurrentDate.setMonth(memberCalendarCurrentDate.getMonth() + 1);
+        renderMemberCalendar();
+      });
+    }
+
     async function loadEvents() {
       const body = await api('/api/events');
       allEvents = body.data.events;
       eventsBody.replaceChildren();
+      const memberEventsBody = document.getElementById('member-events');
+      if (memberEventsBody) memberEventsBody.replaceChildren();
 
       for (const event of body.data.events) {
         const rsvps = Array.isArray(event.rsvps) ? event.rsvps : [];
@@ -1160,8 +1309,8 @@
         } else {
           const rsvpButton = document.createElement('button');
           rsvpButton.type = 'button';
-          rsvpButton.textContent = rsvps.includes(currentUser.id) ? 'RSVP’d' : 'RSVP';
-          rsvpButton.disabled = rsvps.includes(currentUser.id) || event.status !== 'open';
+          rsvpButton.textContent = rsvps.includes(currentUser?.id) ? 'RSVP\'d' : 'RSVP';
+          rsvpButton.disabled = rsvps.includes(currentUser?.id) || event.status !== 'open';
           rsvpButton.addEventListener('click', async () => {
             try {
               await api(`/api/events/${encodeURIComponent(event.id)}/rsvp`, { method: 'POST' });
@@ -1175,10 +1324,47 @@
         }
         row.appendChild(actions);
         eventsBody.appendChild(row);
+
+        // For members, also populate the UI table with only available events (not yet RSVP'd)
+        if (currentUser && currentUser.role === 'member' && !rsvps.includes(currentUser.id) && event.status !== 'cancelled') {
+          const memberRow = document.createElement('tr');
+          for (const value of [
+            event.date,
+            event.time,
+            event.title,
+            event.venue,
+            `${rsvps.length}/${event.capacity}`,
+            event.status
+          ]) {
+            const cell = document.createElement('td');
+            cell.textContent = value;
+            memberRow.appendChild(cell);
+          }
+
+          const memberActions = document.createElement('td');
+          const rsvpButton = document.createElement('button');
+          rsvpButton.type = 'button';
+          rsvpButton.textContent = 'RSVP';
+          rsvpButton.disabled = event.status !== 'open';
+          rsvpButton.addEventListener('click', async () => {
+            try {
+              await api(`/api/events/${encodeURIComponent(event.id)}/rsvp`, { method: 'POST' });
+              showMessage(message, `RSVP confirmed for "${event.title}".`, true);
+              await loadEvents();
+            } catch (error) {
+              showMessage(message, error.message, false);
+            }
+          });
+          memberActions.appendChild(rsvpButton);
+          memberRow.appendChild(memberActions);
+          if (memberEventsBody) memberEventsBody.appendChild(memberRow);
+        }
       }
+      
       // Render calendar after loading events
       try {
         renderCalendar();
+        renderMemberCalendar();
       } catch (error) {
         console.error('Error rendering calendar:', error);
       }
