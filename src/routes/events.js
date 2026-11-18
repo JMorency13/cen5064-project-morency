@@ -9,10 +9,15 @@ const { createDashboardService } = require('../services/dashboardService');
 const { createEventService } = require('../services/eventService');
 const { authenticate, authorize } = require('../middleware/auth');
 
-// Use database or JSON store based on USE_DATABASE flag
-const useDatabase = process.env.USE_DATABASE === 'true';
-const activeEventStore = useDatabase ? eventStoreDb : eventStore;
-const activeUserStore = useDatabase ? userStoreDb : userStore;
+// Use database in production, JSON stores in tests
+const isTest = process.env.NODE_ENV === 'test' || require.main !== module;
+const activeEventStore = isTest ? eventStore : eventStoreDb;
+const activeUserStore = isTest ? userStore : userStoreDb;
+
+if (!isTest) {
+  eventStoreDb.init(true);
+  userStoreDb.init(true);
+}
 
 const dashboardService = createDashboardService({ eventStore: activeEventStore });
 const eventService = createEventService({ eventStore: activeEventStore, userStore: activeUserStore });

@@ -12,9 +12,13 @@ const scryptAsync = promisify(scrypt);
 const SESSION_DURATION_MS = 8 * 60 * 60 * 1000;
 const sessions = new Map();
 
-// Use database or JSON store based on USE_DATABASE flag
-const useDatabase = process.env.USE_DATABASE === 'true';
-const activeUserStore = useDatabase ? userStoreDb : userStore;
+// Use database in production, JSON store in tests
+const isTest = process.env.NODE_ENV === 'test' || require.main !== module;
+const activeUserStore = isTest ? userStore : userStoreDb;
+
+if (!isTest) {
+  userStoreDb.init(true);
+}
 
 function toPublicUser(user) {
   return {

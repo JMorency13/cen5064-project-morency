@@ -17,18 +17,9 @@ app.use('/api/events', eventsRouter);
 
 // Only listen if this file is run directly (not during tests)
 if (require.main === module) {
-  const useDatabase = process.env.USE_DATABASE === 'true';
-
-  if (useDatabase) {
-    console.log('Using SQLite database storage');
-    eventStoreDb.init(true);
-    userStoreDb.init(true);
-  } else {
-    console.log('Using JSON file storage');
-    eventStore.init(process.env.EVENTS_FILE || path.join(__dirname, 'data', 'events.json'));
-    userStore.init(process.env.USERS_FILE || path.join(__dirname, 'data', 'users.json'));
-    userStoreDb.init(false);
-  }
+  console.log('Using SQLite database storage');
+  eventStoreDb.init(true);
+  userStoreDb.init(true);
 
   app.listen(PORT, async () => {
     const url = `http://localhost:${PORT}`;
@@ -41,6 +32,10 @@ if (require.main === module) {
       console.log('Could not open browser automatically. Please open manually: ' + url);
     }
   });
+} else {
+  // For tests, initialize stores in memory (not database)
+  eventStore.init();
+  userStore.init();
 }
 
 module.exports = app;

@@ -30,15 +30,15 @@ Requires Node.js 18+ and npm.
 git clone https://github.com/JMorency13/cen5064-project-morency.git
 cd cen5064-project-morency
 npm install
+node scripts/migrate.js
 npm start
 ```
 
-The browser will automatically open to http://localhost:3000. To use a different port, set `PORT` first: `PORT=4000 npm start` (Mac/Linux), `$env:PORT=4000; npm start` (Windows PowerShell), or `set PORT=4000 && npm start` (Windows cmd).
+The browser will automatically open to http://localhost:3000. The SQLite database is automatically initialized on first run. To use a different port, set `PORT` first: `PORT=4000 npm start` (Mac/Linux), `$env:PORT=4000; npm start` (Windows PowerShell), or `set PORT=4000 && npm start` (Windows cmd).
 
 **Data storage:**
-- By default, events and users are saved to JSON files: `data/events.json` and `data/users.json`
-- To use a database instead (SQLite), run `node scripts/migrate.js` to initialize the database, then start the server with `USE_DATABASE=true npm start`
-- Database path: Set `DATABASE_FILE` to customize the SQLite database location (default: `data/events.db`)
+- Uses SQLite database for persistent storage (required)
+- Database location: `data/events.db` (default) or set `DATABASE_FILE` to customize
 
 Run the tests with `npm test`.
 
