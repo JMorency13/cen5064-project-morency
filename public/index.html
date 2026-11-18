@@ -335,6 +335,126 @@
       color: var(--gray-500);
     }
 
+    #event-modal-overlay, #event-details-modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: none;
+      z-index: 999;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #event-modal-overlay[hidden=false], #event-details-modal-overlay[hidden=false] {
+      display: flex;
+    }
+
+    #event-modal-overlay:not([hidden]), #event-details-modal-overlay:not([hidden]) {
+      display: flex !important;
+    }
+
+    #event-modal, #event-details-modal {
+      background: white;
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 600px;
+      width: 90%;
+      max-height: 85vh;
+      overflow-y: auto;
+      position: relative;
+      z-index: 1000;
+    }
+
+    #event-modal h2, #event-details-modal h2 {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+
+    #event-modal .close-button, #event-details-modal .close-button {
+      background: transparent;
+      color: var(--gray-700);
+      font-size: 1.5rem;
+      padding: 0;
+      margin: 0;
+      border: none;
+      cursor: pointer;
+      min-width: auto;
+      width: auto;
+    }
+
+    #event-modal .close-button:hover, #event-details-modal .close-button:hover {
+      color: var(--primary);
+    }
+
+    #event-form {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    #event-form label {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      font-weight: 500;
+    }
+
+    #event-form input, #event-form textarea {
+      padding: 0.75rem;
+      border: 2px solid var(--gray-200);
+      border-radius: 8px;
+      font-size: 1rem;
+    }
+
+    #event-form button[type="submit"], #cancel-edit {
+      background: var(--primary);
+      color: white;
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 8px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+
+    #event-form button[type="submit"]:hover {
+      background: var(--primary-dark);
+    }
+
+    #cancel-edit {
+      background: var(--gray-400);
+    }
+
+    #cancel-edit:hover {
+      background: var(--gray-500);
+    }
+
+    #event-details-content {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .event-detail-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.75rem;
+      background: var(--gray-50);
+      border-radius: 6px;
+      border-left: 3px solid var(--secondary);
+    }
+
+    .event-detail-row strong {
+      color: var(--gray-700);
+    }
+
     section#account-section {
       background: white;
       border-radius: 12px;
@@ -494,13 +614,18 @@
   </section>
 
   <main id="application" hidden>
-    <p>Signed in as <span id="current-user"></span> (<span id="current-role"></span>)</p>
-    <nav aria-label="Account navigation">
-      <button id="show-dashboard" type="button">Dashboard</button>
-      <button id="show-account" type="button">Account</button>
-    </nav>
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 0; border-bottom: 2px solid var(--gray-200); margin-bottom: 2rem;">
+      <h1 style="margin: 0; font-size: 1.5rem;">Events</h1>
+      <div style="display: flex; gap: 1rem; align-items: center;">
+        <span id="current-user" style="color: var(--gray-700); font-weight: 500;"></span>
+        <span id="current-role" hidden></span>
+        <button id="show-account" type="button" style="background: var(--primary); color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 500;">Account</button>
+        <button id="show-dashboard" type="button" hidden>Dashboard</button>
+      </div>
+    </div>
     <div id="message" role="status"></div>
 
+    <!-- Attendees Modal -->
     <div id="attendees-modal-overlay">
       <section id="attendees-modal">
         <h2>
@@ -512,33 +637,65 @@
       </section>
     </div>
 
+    <!-- Create/Edit Event Modal -->
+    <div id="event-modal-overlay" hidden>
+      <section id="event-modal">
+        <h2>
+          <span id="event-modal-title">Create Event</span>
+          <button class="close-button" id="close-event-modal" type="button">✕</button>
+        </h2>
+        <form id="event-form">
+          <label>Title <input id="title" required></label>
+          <label>Date <input id="date" type="date" required></label>
+          <label>Start time (EST, events last 1 hour) <input id="time" type="time" required></label>
+          <label>Venue <input id="venue" required></label>
+          <label>Description <textarea id="description"></textarea></label>
+          <label>Capacity <input id="capacity" type="number" min="1" required></label>
+          <div style="display: flex; gap: 1rem;">
+            <button type="submit">Save event</button>
+            <button id="cancel-edit" type="button" hidden>Cancel edit</button>
+          </div>
+        </form>
+      </section>
+    </div>
+
+    <!-- Event Details Modal -->
+    <div id="event-details-modal-overlay" hidden>
+      <section id="event-details-modal">
+        <h2>
+          Event Details
+          <button class="close-button" id="close-event-details" type="button">✕</button>
+        </h2>
+        <div id="event-details-content" style="display: flex; flex-direction: column; gap: 1rem;"></div>
+        <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+          <button id="edit-event-button" type="button" style="background: var(--primary); color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 500;">Edit Event</button>
+          <button id="view-attendees-button" type="button" style="background: var(--secondary); color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 500;">View Attendees</button>
+          <button id="cancel-event-button" type="button" style="background: var(--danger); color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 500;" hidden>Cancel Event</button>
+        </div>
+      </section>
+    </div>
+
     <div id="dashboard">
     <section id="organizer-section" hidden>
-      <h2>Manage events</h2>
-      <form id="event-form">
-        <label>Title <input id="title" required></label>
-        <label>Date <input id="date" type="date" required></label>
-        <label>Start time (events last 1 hour) <input id="time" type="time" required></label>
-        <label>Venue <input id="venue" required></label>
-        <label>Description <textarea id="description"></textarea></label>
-        <label>Capacity <input id="capacity" type="number" min="1" required></label>
-        <button type="submit">Create event</button>
-        <button id="cancel-edit" type="button" hidden>Cancel edit</button>
-      </form>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2 style="margin: 0;">Manage events</h2>
+        <button id="create-event-btn" type="button" style="background: var(--success); color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 500;">+ Create Event</button>
+      </div>
     </section>
 
     <div id="events-container">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-        <h2 style="margin: 0;">Upcoming events</h2>
-        <div>
-          <button id="toggle-view" type="button" style="background: var(--secondary); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-weight: 500;">
-            📅 Calendar View
-          </button>
+      <!-- Calendar View (DEFAULT) -->
+      <div style="margin-top: 2rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+          <button id="prev-month" type="button" style="background: var(--gray-200); border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer;">← Previous</button>
+          <h2 id="calendar-month" style="margin: 0; min-width: 200px; text-align: center;"></h2>
+          <button id="next-month" type="button" style="background: var(--gray-200); border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer;">Next →</button>
         </div>
+        <div id="calendar-grid" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.5rem;"></div>
       </div>
 
-      <!-- Table View -->
-      <table id="events-table-view">
+      <!-- Table View (Hidden by default) -->
+      <table id="events-table-view" hidden>
         <thead>
           <tr>
             <th>Date</th>
@@ -552,16 +709,6 @@
         </thead>
         <tbody id="events"></tbody>
       </table>
-
-      <!-- Calendar View -->
-      <div id="calendar-container" hidden style="margin-top: 2rem;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-          <button id="prev-month" type="button" style="background: var(--gray-200); border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer;">← Previous</button>
-          <h3 id="calendar-month" style="margin: 0; min-width: 200px; text-align: center;"></h3>
-          <button id="next-month" type="button" style="background: var(--gray-200); border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer;">Next →</button>
-        </div>
-        <div id="calendar-grid" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.5rem;"></div>
-      </div>
     </div>
 
     <section id="member-section" hidden>
@@ -709,20 +856,23 @@
     let allEvents = [];
 
     function renderCalendar() {
+      const grid = document.getElementById('calendar-grid');
+      const monthLabel = document.getElementById('calendar-month');
+      if (!grid || !monthLabel) return; // Skip calendar rendering if elements not present (e.g., in test environment)
+      
       const year = calendarCurrentDate.getFullYear();
       const month = calendarCurrentDate.getMonth();
       
       const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
         'July', 'August', 'September', 'October', 'November', 'December'];
       
-      document.getElementById('calendar-month').textContent = `${monthNames[month]} ${year}`;
+      monthLabel.textContent = `${monthNames[month]} ${year}`;
 
       const firstDay = new Date(year, month, 1);
       const lastDay = new Date(year, month + 1, 0);
       const daysInMonth = lastDay.getDate();
       const startingDayOfWeek = firstDay.getDay();
 
-      const grid = document.getElementById('calendar-grid');
       grid.replaceChildren();
 
       const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -768,14 +918,13 @@
           eventDiv.style.cursor = 'pointer';
           eventDiv.addEventListener('click', (e) => {
             e.stopPropagation();
-            const row = eventsBody.querySelector(`tr`);
-            const eventRow = Array.from(eventsBody.querySelectorAll('tr')).find(r => 
-              r.textContent.includes(event.title) && r.textContent.includes(event.date)
-            );
-            if (eventRow) {
-              eventRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              eventRow.style.backgroundColor = '#fff9e6';
-              setTimeout(() => eventRow.style.backgroundColor = '', 2000);
+            // Show event details modal for organizers
+            if (currentUser && currentUser.role === 'organizer') {
+              currentEventBeingViewed = event;
+              document.getElementById('event-details-content').innerHTML = formatEventDetails(event);
+              document.getElementById('cancel-event-button').hidden = event.status === 'cancelled';
+              document.getElementById('event-details-modal-overlay').removeAttribute('hidden');
+              document.getElementById('event-details-modal-overlay').style.display = 'flex';
             }
           });
           dayCell.appendChild(eventDiv);
@@ -785,20 +934,127 @@
       }
     }
 
-    document.getElementById('toggle-view').addEventListener('click', () => {
-      const tableView = document.getElementById('events-table-view');
-      const calendarView = document.getElementById('calendar-container');
-      const toggleBtn = document.getElementById('toggle-view');
-      
-      if (calendarView.hidden) {
-        tableView.hidden = true;
-        calendarView.hidden = false;
-        toggleBtn.textContent = '📋 Table View';
-        renderCalendar();
-      } else {
-        tableView.hidden = false;
-        calendarView.hidden = true;
-        toggleBtn.textContent = '📅 Calendar View';
+    // Helper function to convert time to EST
+    function convertToEST(timeString) {
+      if (!timeString) return '';
+      const [hours, minutes] = timeString.split(':');
+      return `${hours}:${minutes} EST`;
+    }
+
+    // Helper function to format event details
+    function formatEventDetails(event) {
+      const rsvps = Array.isArray(event.rsvps) ? event.rsvps : [];
+      const details = [];
+      details.push(`<div class="event-detail-row"><strong>Title:</strong> <span>${event.title}</span></div>`);
+      details.push(`<div class="event-detail-row"><strong>Date:</strong> <span>${event.date}</span></div>`);
+      details.push(`<div class="event-detail-row"><strong>Time:</strong> <span>${convertToEST(event.time)}</span></div>`);
+      details.push(`<div class="event-detail-row"><strong>Venue:</strong> <span>${event.venue}</span></div>`);
+      details.push(`<div class="event-detail-row"><strong>Description:</strong> <span>${event.description || 'No description'}</span></div>`);
+      details.push(`<div class="event-detail-row"><strong>Attendees:</strong> <span>${rsvps.length}/${event.capacity}</span></div>`);
+      details.push(`<div class="event-detail-row"><strong>Status:</strong> <span>${event.status}</span></div>`);
+      return details.join('');
+    }
+
+    // Handle Create Event button
+    document.getElementById('create-event-btn')?.addEventListener('click', () => {
+      editingEventId = null;
+      eventForm.reset();
+      document.getElementById('event-modal-title').textContent = 'Create Event';
+      document.getElementById('cancel-edit').hidden = true;
+      document.getElementById('event-modal-overlay').removeAttribute('hidden');
+      document.getElementById('event-modal-overlay').style.display = 'flex';
+    });
+
+    // Handle Close Event Modal
+    document.getElementById('close-event-modal')?.addEventListener('click', () => {
+      document.getElementById('event-modal-overlay').setAttribute('hidden', '');
+      document.getElementById('event-modal-overlay').style.display = 'none';
+    });
+
+    document.getElementById('event-modal-overlay')?.addEventListener('click', (e) => {
+      if (e.target.id === 'event-modal-overlay') {
+        document.getElementById('event-modal-overlay').setAttribute('hidden', '');
+        document.getElementById('event-modal-overlay').style.display = 'none';
+      }
+    });
+
+    // Handle Close Event Details Modal
+    document.getElementById('close-event-details')?.addEventListener('click', () => {
+      document.getElementById('event-details-modal-overlay').setAttribute('hidden', '');
+      document.getElementById('event-details-modal-overlay').style.display = 'none';
+    });
+
+    document.getElementById('event-details-modal-overlay')?.addEventListener('click', (e) => {
+      if (e.target.id === 'event-details-modal-overlay') {
+        document.getElementById('event-details-modal-overlay').setAttribute('hidden', '');
+        document.getElementById('event-details-modal-overlay').style.display = 'none';
+      }
+    });
+
+    // Global variable to store current event being viewed
+    let currentEventBeingViewed = null;
+
+    // Handle Edit Event from details modal
+    document.getElementById('edit-event-button')?.addEventListener('click', () => {
+      if (currentEventBeingViewed) {
+        editingEventId = currentEventBeingViewed.id;
+        document.getElementById('event-modal-title').textContent = 'Edit Event';
+        for (const field of ['title', 'date', 'time', 'venue', 'description', 'capacity']) {
+          document.getElementById(field).value = currentEventBeingViewed[field] || '';
+        }
+        document.getElementById('cancel-edit').hidden = false;
+        document.getElementById('event-modal-overlay').removeAttribute('hidden');
+        document.getElementById('event-modal-overlay').style.display = 'flex';
+        document.getElementById('event-details-modal-overlay').setAttribute('hidden', '');
+        document.getElementById('event-details-modal-overlay').style.display = 'none';
+      }
+    });
+
+    // Handle View Attendees from details modal
+    document.getElementById('view-attendees-button')?.addEventListener('click', async () => {
+      if (currentEventBeingViewed) {
+        try {
+          const result = await api(`/api/events/${encodeURIComponent(currentEventBeingViewed.id)}/attendees`);
+          document.getElementById('attendees-event-title').textContent = result.data.eventTitle;
+          document.getElementById('attendees-count').textContent = result.data.attendeeCount;
+          document.getElementById('attendees-capacity').textContent = result.data.capacity;
+          const attendeesList = document.getElementById('attendees-list');
+          attendeesList.replaceChildren();
+          if (result.data.attendees.length === 0) {
+            const li = document.createElement('li');
+            li.textContent = 'No attendees yet';
+            attendeesList.appendChild(li);
+          } else {
+            for (const attendee of result.data.attendees) {
+              const li = document.createElement('li');
+              li.textContent = attendee.name;
+              attendeesList.appendChild(li);
+            }
+          }
+          const overlay = document.getElementById('attendees-modal-overlay');
+          if (overlay) overlay.classList.add('active');
+          document.getElementById('event-details-modal-overlay').setAttribute('hidden', '');
+          document.getElementById('event-details-modal-overlay').style.display = 'none';
+        } catch (error) {
+          if (error.status !== 401) showMessage(message, error.message, false);
+        }
+      }
+    });
+
+    // Handle Cancel Event from details modal
+    document.getElementById('cancel-event-button')?.addEventListener('click', async () => {
+      if (currentEventBeingViewed && currentEventBeingViewed.status !== 'cancelled') {
+        if (!window.confirm(`Cancel "${currentEventBeingViewed.title}"? Members who RSVP'd will be notified.`)) return;
+        try {
+          await api(`/api/events/${encodeURIComponent(currentEventBeingViewed.id)}/cancel`, { method: 'POST' });
+          if (editingEventId === currentEventBeingViewed.id) resetEventForm();
+          await loadEvents();
+          showMessage(message, `Cancelled "${currentEventBeingViewed.title}".`, true);
+          document.getElementById('event-details-modal-overlay').setAttribute('hidden', '');
+          document.getElementById('event-details-modal-overlay').style.display = 'none';
+        } catch (error) {
+          if (error.status !== 401) showMessage(message, error.message, false);
+        }
       }
     });
 
@@ -834,7 +1090,7 @@
         }
 
         const actions = document.createElement('td');
-        if (currentUser.role === 'organizer') {
+        if (currentUser && currentUser.role === 'organizer') {
           const viewAttendeesButton = document.createElement('button');
           viewAttendeesButton.type = 'button';
           viewAttendeesButton.textContent = 'Attendees';
@@ -857,7 +1113,8 @@
                   attendeesList.appendChild(li);
                 }
               }
-              document.getElementById('attendees-modal-overlay').classList.add('active');
+              const overlay = document.getElementById('attendees-modal-overlay');
+              if (overlay) overlay.classList.add('active');
             } catch (error) {
               if (error.status !== 401) showMessage(message, error.message, false);
             }
@@ -870,10 +1127,15 @@
           editButton.addEventListener('click', () => {
             editingEventId = event.id;
             for (const field of ['title', 'date', 'time', 'venue', 'description', 'capacity']) {
-              document.getElementById(field).value = event[field] || '';
+              const el = document.getElementById(field);
+              if (el) el.value = event[field] || '';
             }
-            eventForm.querySelector('button[type="submit"]').textContent = 'Update event';
-            document.getElementById('cancel-edit').hidden = false;
+            if (eventForm) {
+              const submitBtn = eventForm.querySelector('button[type="submit"]');
+              if (submitBtn) submitBtn.textContent = 'Update event';
+            }
+            const cancelEditBtn = document.getElementById('cancel-edit');
+            if (cancelEditBtn) cancelEditBtn.hidden = false;
           });
           actions.appendChild(editButton);
           if (event.status !== 'cancelled') {
@@ -913,6 +1175,12 @@
         }
         row.appendChild(actions);
         eventsBody.appendChild(row);
+      }
+      // Render calendar after loading events
+      try {
+        renderCalendar();
+      } catch (error) {
+        console.error('Error rendering calendar:', error);
       }
     }
 
@@ -982,8 +1250,22 @@
       }
     });
 
+    document.getElementById('show-account').addEventListener('click', () => {
+      showView(true);
+      // Handle back to dashboard from account section
+      const accountSection = document.getElementById('account-section');
+      let accountBackButton = accountSection.querySelector('[data-back-button="true"]');
+      if (!accountBackButton) {
+        accountBackButton = document.createElement('button');
+        accountBackButton.setAttribute('data-back-button', 'true');
+        accountBackButton.textContent = '← Back to Dashboard';
+        accountBackButton.type = 'button';
+        accountBackButton.style.cssText = 'background: var(--gray-200); border: none; padding: 0.6rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 500; margin-bottom: 1rem;';
+        accountBackButton.addEventListener('click', () => showView(false));
+        accountSection.insertBefore(accountBackButton, accountSection.firstChild);
+      }
+    });
     document.getElementById('show-dashboard').addEventListener('click', () => showView(false));
-    document.getElementById('show-account').addEventListener('click', () => showView(true));
     retrySession.addEventListener('click', restoreSession);
 
     function resetEventForm() {
@@ -1017,12 +1299,19 @@
         showMessage(message, `${action} "${result.data.title}".`, true);
         resetEventForm();
         await loadEvents();
+        // Close the event modal after successful submission
+        document.getElementById('event-modal-overlay').setAttribute('hidden', '');
+        document.getElementById('event-modal-overlay').style.display = 'none';
       } catch (error) {
         showMessage(message, error.message, false);
       }
     });
 
-    document.getElementById('cancel-edit').addEventListener('click', resetEventForm);
+    document.getElementById('cancel-edit').addEventListener('click', () => {
+      resetEventForm();
+      document.getElementById('event-modal-overlay').setAttribute('hidden', '');
+      document.getElementById('event-modal-overlay').style.display = 'none';
+    });
 
     async function loadNotifications() {
       const result = await api('/api/events/notifications');
@@ -1052,16 +1341,23 @@
       }
     });
 
-    document.getElementById('close-attendees').addEventListener('click', () => {
-      document.getElementById('attendees-modal-overlay').classList.remove('active');
-    });
+    const closeAttendeesBtn = document.getElementById('close-attendees');
+    if (closeAttendeesBtn) {
+      closeAttendeesBtn.addEventListener('click', () => {
+        const overlay = document.getElementById('attendees-modal-overlay');
+        if (overlay) overlay.classList.remove('active');
+      });
+    }
 
     // Close modal when clicking on overlay background
-    document.getElementById('attendees-modal-overlay').addEventListener('click', (e) => {
-      if (e.target.id === 'attendees-modal-overlay') {
-        document.getElementById('attendees-modal-overlay').classList.remove('active');
-      }
-    });
+    const attendeesOverlay = document.getElementById('attendees-modal-overlay');
+    if (attendeesOverlay) {
+      attendeesOverlay.addEventListener('click', (e) => {
+        if (e.target.id === 'attendees-modal-overlay') {
+          document.getElementById('attendees-modal-overlay').classList.remove('active');
+        }
+      });
+    }
 
     restoreSession();
   </script>
