@@ -681,35 +681,35 @@
         <h2 style="margin: 0;">Manage events</h2>
         <button id="create-event-btn" type="button" style="background: var(--success); color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 500;">+ Create Event</button>
       </div>
-    </section>
 
-    <div id="events-container">
-      <!-- Calendar View (DEFAULT) -->
-      <div style="margin-top: 2rem;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-          <button id="prev-month" type="button" style="background: var(--primary); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-weight: 500;">← Previous</button>
-          <h2 id="calendar-month" style="margin: 0; min-width: 200px; text-align: center;"></h2>
-          <button id="next-month" type="button" style="background: var(--primary); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-weight: 500;">Next →</button>
+      <div id="events-container">
+        <!-- Calendar View (DEFAULT) -->
+        <div style="margin-top: 2rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <button id="prev-month" type="button" style="background: var(--primary); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-weight: 500;">← Previous</button>
+            <h2 id="calendar-month" style="margin: 0; min-width: 200px; text-align: center;"></h2>
+            <button id="next-month" type="button" style="background: var(--primary); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-weight: 500;">Next →</button>
+          </div>
+          <div id="calendar-grid" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.5rem;"></div>
         </div>
-        <div id="calendar-grid" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.5rem;"></div>
-      </div>
 
-      <!-- Table View (Hidden by default) -->
-      <table id="events-table-view" hidden>
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Time</th>
-            <th>Title</th>
-            <th>Venue</th>
-            <th>Capacity</th>
-            <th>Status</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="events"></tbody>
-      </table>
-    </div>
+        <!-- Table View (Hidden by default) -->
+        <table id="events-table-view" hidden>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Time</th>
+              <th>Title</th>
+              <th>Venue</th>
+              <th>Capacity</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="events"></tbody>
+        </table>
+      </div>
+    </section>
 
     <section id="member-section" hidden>
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
@@ -717,8 +717,8 @@
         <button id="toggle-member-calendar" type="button" style="background: var(--primary); color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 500;">📅 View Calendar</button>
       </div>
 
-      <button id="load-notifications" type="button" hidden>Load notifications</button>
-      <ul id="notifications" hidden></ul>
+      <button id="load-notifications" type="button">Load notifications</button>
+      <ul id="notifications"></ul>
 
       <div id="member-events-container">
         <!-- Table View (DEFAULT) -->
