@@ -59,7 +59,9 @@ router.get('/', authenticate, async (req, res) => {
 // POST /api/events (Create event)
 router.post('/', authenticate, authorize('organizer'), async (req, res) => {
   const organizerId = req.user.id;
+  console.log(`[Routes] POST /api/events - Creating event for organizer: ${organizerId}`);
   const result = await eventService.createEvent(req.body, organizerId);
+  console.log(`[Routes] Event creation result:`, result);
 
   const responsePayload = {
     success: result.success,
