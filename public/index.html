@@ -651,6 +651,7 @@
           <button class="close-button" id="close-event-modal" type="button">✕</button>
         </h2>
         <form id="event-form">
+          <div id="event-error-message" style="display: none; background-color: #fee; color: #c00; padding: 0.75rem; border-radius: 4px; margin-bottom: 1rem; border: 1px solid #fcc;"></div>
           <label>Title <input id="title" required></label>
           <label>Date <input id="date" type="date" required></label>
           <label>Start time (EST, events last 1 hour) <input id="time" type="time" required></label>
@@ -1099,24 +1100,10 @@
       document.getElementById('event-modal-overlay').style.display = 'none';
     });
 
-    document.getElementById('event-modal-overlay')?.addEventListener('click', (e) => {
-      if (e.target.id === 'event-modal-overlay') {
-        document.getElementById('event-modal-overlay').setAttribute('hidden', '');
-        document.getElementById('event-modal-overlay').style.display = 'none';
-      }
-    });
-
     // Handle Close Event Details Modal
     document.getElementById('close-event-details')?.addEventListener('click', () => {
       document.getElementById('event-details-modal-overlay').setAttribute('hidden', '');
       document.getElementById('event-details-modal-overlay').style.display = 'none';
-    });
-
-    document.getElementById('event-details-modal-overlay')?.addEventListener('click', (e) => {
-      if (e.target.id === 'event-details-modal-overlay') {
-        document.getElementById('event-details-modal-overlay').setAttribute('hidden', '');
-        document.getElementById('event-details-modal-overlay').style.display = 'none';
-      }
     });
 
     // Global variable to store current event being viewed
@@ -1496,6 +1483,10 @@
 
     eventForm.addEventListener('submit', async (event) => {
       event.preventDefault();
+      const errorDiv = document.getElementById('event-error-message');
+      errorDiv.style.display = 'none';
+      errorDiv.textContent = '';
+
       const payload = {
         title: document.getElementById('title').value,
         date: document.getElementById('date').value,
@@ -1522,7 +1513,8 @@
         document.getElementById('event-modal-overlay').setAttribute('hidden', '');
         document.getElementById('event-modal-overlay').style.display = 'none';
       } catch (error) {
-        showMessage(message, error.message, false);
+        errorDiv.textContent = error.message;
+        errorDiv.style.display = 'block';
       }
     });
 
