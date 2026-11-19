@@ -39,6 +39,8 @@ The browser will automatically open to http://localhost:3000. The SQLite databas
 **Data storage:**
 - Uses SQLite database for persistent storage (required)
 - Database location: `data/events.db` (default) or set `DATABASE_FILE` to customize
+- Database includes tables for users, events, RSVPs, and notifications
+- All data persists across server restarts
 
 Run the tests with `npm test`.
 
@@ -48,20 +50,22 @@ You can now test with both organizer and member accounts simultaneously in separ
 ### Organizer walkthrough
 
 1. Select **Create account**, enter your details, choose **Organizer**, and submit the form. Alternatively, sign in with the [organizer demo account](#accounts-and-demo-limitations).
-2. Under **Manage events**, enter a title, future date, start time, venue, and capacity. Add a description if you wish, then select **Create event**.
+2. Under **Manage events**, enter a title, future date, start time, venue, and capacity. Add a description if you wish, then select **Create event**. The event appears immediately in your **Calendar** view.
 3. Find your event under **Upcoming events**. The capacity column shows how many members have RSVP'd. Events last one hour; an event that overlaps another at the same venue is rejected.
-4. To view who is attending an event, select **Attendees**. A list will show attendee names and the total count.
+4. To view who is attending an event, select **Attendees**. A popup will show a list of attendee names and the total RSVP count.
 5. To change an event, select **Edit**, update its details, and select **Update event**. Members who RSVP'd receive a notification when details change.
-6. To cancel an event, select **Cancel event** and confirm. Its status changes to `cancelled`, and members who RSVP'd receive a notification.
+6. To cancel an event, select **Cancel event** and confirm. Its status changes to `cancelled`, and members who RSVP'd receive a notification. The event disappears from your calendar.
 7. To sign out, select **Account**, then **Log out**.
 
 ### Member walkthrough
 
 1. Select **Create account**, enter your details, choose **Member**, and submit the form. Alternatively, sign in with the [member demo account](#accounts-and-demo-limitations).
-2. Browse **Upcoming events**. An organizer must first create an event for it to appear.
+2. Browse **Upcoming events** (default view). An organizer must first create an event for it to appear.
 3. Select **RSVP** for an open event. The button changes to **RSVP’d**; events at capacity are marked `full` and cannot accept new RSVPs.
-4. Check **Member notifications** for updates or cancellations to events you RSVP'd to. Notifications load when you sign in or reload; select **Load notifications** to refresh them. Cancelled events you RSVP'd to remain on your dashboard marked `cancelled`.
-5. To sign out, select **Account**, then **Log out**.
+4. View your **Calendar** (below the events list) to see all events you've RSVP'd to. Click on any event in the calendar to view its details, including who's attending and when it occurs.
+5. To cancel your RSVP, click the event in the calendar and select **Cancel RSVP** in the popup. The event will be removed from your calendar and event list.
+6. Check **Notifications** (button in top-right corner) for updates or cancellations to events you RSVP'd to. Notifications load when you sign in or reload. Cancelled events you RSVP'd to remain on your dashboard marked `cancelled`.
+7. To sign out, select **Account**, then **Log out**.
 
 ## Architecture
 
@@ -291,31 +295,25 @@ You can create a local account with a unique email address and a password of 8�
 
 ### How data is stored
 
-The system supports both JSON files (default) and database storage:
+The system uses SQLite for persistent data storage. The database is automatically initialized on first run with the required schema.
 
-#### JSON Storage (Default)
-The demo uses local JSON files for simplicity during development. The server loads them into memory and writes changes back as users register or events change:
-- **Accounts:** `data/users.json` stores registered users' names, email addresses, roles, IDs, and salted password hashes—not plaintext passwords. Built-in demo accounts are kept in memory. Set `USERS_FILE` to use a different file.
-- **Events:** `data/events.json` stores event details, organizer IDs, RSVPs, and statuses. Set `EVENTS_FILE` to use a different file.
-
-#### Database Storage (SQLite)
-To use a persistent database instead of JSON files:
-1. Run `node scripts/migrate.js` to initialize the SQLite database with required tables
-2. Start the server with `USE_DATABASE=true npm start`
-3. Set `DATABASE_FILE` to customize the database location (default: `data/events.db`)
+**Database Storage (SQLite)**
+- Database location: `data/events.db` (default) or set `DATABASE_FILE` to customize
+- Database is automatically initialized on startup with tables for users, events, RSVPs, and notifications
+- All data persists across server restarts
 
 The database schema includes:
 - **users** — registered user accounts with encrypted passwords
-- **events** — event details and metadata
+- **events** — event details, organizer ID, and metadata
 - **rsvps** — many-to-many relationship between members and events
 - **notifications** — event change notifications for members
 
-#### Sessions
+**Sessions**
 Active sessions are held in server memory. The browser saves the session token in local storage to restore the login after a reload. Server restarts clear sessions, but not saved accounts or events.
 
-The `data/` directory is ignored by Git. Keep these files and any alternative storage paths private and out of version control.
+The `data/` directory is ignored by Git. Keep the database file and any database credentials private and out of version control.
 
-#### Future improvements
+**Future improvements**
 PostgreSQL support could be added for production deployments. Account authentication could move to a university SSO provider, with secure server-managed sessions instead of browser-stored tokens.
 
 ## Architecture Decision Records
@@ -335,3 +333,4 @@ A one-line note per week keeps your commit story readable:
 - Week 3 (Sep 7): authentication and initial event management
 - Week 4 (Sep 14): event validation and conflict detection
 - Session 5 (Nov 12): attendee viewing for organizers, database support, UI redesign
+- Session 6 (Nov 19): member calendar with event details and cancel RSVP, FK constraint error handling, notification dropdown, database persistence fixes
