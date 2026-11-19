@@ -10,13 +10,15 @@ const { createEventService } = require('../services/eventService');
 const { authenticate, authorize } = require('../middleware/auth');
 
 // Use database in production, JSON stores in tests
-const isTest = process.env.NODE_ENV === 'test' || require.main !== module;
+const isTest = process.env.NODE_ENV === 'test' || !process.env.USE_DATABASE;
 const activeEventStore = isTest ? eventStore : eventStoreDb;
 const activeUserStore = isTest ? userStore : userStoreDb;
 
+console.log(`[Routes] isTest: ${isTest}, activeEventStore useDatabase: ${activeEventStore.useDatabase}`);
+
 if (!isTest) {
-  eventStoreDb.init(true);
-  userStoreDb.init(true);
+  // Stores should already be initialized by server.js before this file is required
+  console.log(`[Routes] Using database stores (eventStoreDb.useDatabase: ${eventStoreDb.useDatabase})`);
 }
 
 const dashboardService = createDashboardService({ eventStore: activeEventStore });

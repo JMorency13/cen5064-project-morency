@@ -1,12 +1,25 @@
 const path = require('path');
 const express = require('express');
-const eventsRouter = require('./src/routes/events');
-const authRouter = require('./src/routes/auth');
+
 const eventStore = require('./src/data/eventStore');
 const eventStoreDb = require('./src/data/eventStoreDb');
 const userStore = require('./src/data/userStore');
 const userStoreDb = require('./src/data/userStoreDb');
 const { initializeDatabase } = require('./src/data/db');
+
+// Set environment variable BEFORE requiring routes so they can check it
+const isProduction = require.main === module;
+if (isProduction) {
+  process.env.USE_DATABASE = 'true';
+  console.log('Using SQLite database storage');
+  eventStoreDb.init(true);
+  userStoreDb.init(true);
+  console.log(`[Server] eventStoreDb.useDatabase set to: ${eventStoreDb.useDatabase}`);
+}
+
+// NOW require the routers AFTER stores are initialized
+const eventsRouter = require('./src/routes/events');
+const authRouter = require('./src/routes/auth');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -18,10 +31,6 @@ app.use('/api/events', eventsRouter);
 
 // Only listen if this file is run directly (not during tests)
 if (require.main === module) {
-  console.log('Using SQLite database storage');
-  eventStoreDb.init(true);
-  userStoreDb.init(true);
-
   app.listen(PORT, async () => {
     const url = `http://localhost:${PORT}`;
     console.log(`Server running on ${url}`);
