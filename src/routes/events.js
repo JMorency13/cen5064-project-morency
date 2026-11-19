@@ -62,16 +62,26 @@ router.get('/', authenticate, async (req, res) => {
 router.post('/', authenticate, authorize('organizer'), async (req, res) => {
   const organizerId = req.user.id;
   console.log(`[Routes] POST /api/events - Creating event for organizer: ${organizerId}`);
-  const result = await eventService.createEvent(req.body, organizerId);
-  console.log(`[Routes] Event creation result:`, result);
+  
+  try {
+    const result = await eventService.createEvent(req.body, organizerId);
+    console.log(`[Routes] Event creation result:`, result);
 
-  const responsePayload = {
-    success: result.success,
-    data: result.data,
-    error: result.error
-  };
+    const responsePayload = {
+      success: result.success,
+      data: result.data,
+      error: result.error
+    };
 
-  return res.status(result.statusCode).json(responsePayload);
+    return res.status(result.statusCode).json(responsePayload);
+  } catch (error) {
+    console.error('[Routes] Unexpected error in POST /api/events:', error);
+    return res.status(500).json({
+      success: false,
+      data: null,
+      error: 'An unexpected error occurred while creating the event'
+    });
+  }
 });
 
 // PUT /api/events/:id (Organizer updates event details)

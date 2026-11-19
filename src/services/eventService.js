@@ -125,10 +125,41 @@ function createEventService({ eventStore, userStore }) {
       return precheckError;
     }
 
-    const event = buildEventPayload(eventData, organizerId);
-    await eventStore.save(event);
+    if (!organizerId) {
+      return buildErrorResponse('Organizer ID is required', 401);
+    }
 
-    return buildSuccessResponse(event);
+    // Verify organizer exists in the database before creating event
+    if (userStore && typeof userStore.findByIdAsync === 'function') {
+      try {
+        const organizer = await userStore.findByIdAsync(organizerId);
+        if (!organizer) {
+          return buildErrorResponse(
+            'Organizer account not found. Please sign out and sign in again.',
+            401
+          );
+        }
+      } catch (error) {
+        console.error('[EventService.createEvent] Error verifying organizer:', error.message);
+      }
+    }
+
+    try {
+      const event = buildEventPayload(eventData, organizerId);
+      await eventStore.save(event);
+      return buildSuccessResponse(event);
+    } catch (error) {
+      console.error('[EventService.createEvent] Error saving event:', error.message);
+      
+      if (error.code === 'SQLITE_CONSTRAINT' && error.message.includes('FOREIGN KEY')) {
+        return buildErrorResponse(
+          'Could not create event. User account may not be fully initialized. Please try again.',
+          500
+        );
+      }
+      
+      return buildErrorResponse(error.message || 'Failed to create event', 500);
+    }
   }
 
   async function updateEvent(eventId, updates, organizerId) {
@@ -216,14 +247,18 @@ function createEventService({ eventStore, userStore }) {
       ));
     }
 
-    const savedEvent = await eventStore.update(updatedEvent);
-
-    return {
-      success: true,
-      data: toPublicEvent(savedEvent),
-      error: null,
-      statusCode: 200
-    };
+    try {
+      const savedEvent = await eventStore.update(updatedEvent);
+      return {
+        success: true,
+        data: toPublicEvent(savedEvent),
+        error: null,
+        statusCode: 200
+      };
+    } catch (error) {
+      console.error('[EventService.updateEvent] Error updating event:', error.message);
+      return buildErrorResponse(error.message || 'Failed to update event', 500);
+    }
   }
 
   async function cancelEvent(eventId, organizerId) {

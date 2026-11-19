@@ -13,12 +13,11 @@ const SESSION_DURATION_MS = 8 * 60 * 60 * 1000;
 const sessions = new Map();
 
 // Use database in production, JSON store in tests
-const isTest = process.env.NODE_ENV === 'test' || require.main !== module;
+// Check environment variable set by server.js instead of unreliable require.main
+const isTest = process.env.NODE_ENV === 'test' || !process.env.USE_DATABASE;
 const activeUserStore = isTest ? userStore : userStoreDb;
 
-if (!isTest) {
-  userStoreDb.init(true);
-}
+console.log(`[AuthService] isTest: ${isTest}, activeUserStore: ${isTest ? 'userStore (JSON)' : 'userStoreDb (database)'}`);
 
 function toPublicUser(user) {
   return {
