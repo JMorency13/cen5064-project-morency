@@ -29,6 +29,11 @@ if (require.main === module) {
     try {
       await initializeDatabase();
       console.log('✓ Database initialized and ready');
+      
+      // Seed demo users after database is initialized
+      const { seedDemoUsersAsync } = require('./src/data/userStoreDb');
+      await seedDemoUsersAsync();
+      console.log('✓ Demo users seeded');
     } catch (error) {
       console.error('✗ Database initialization error:', error.message);
     }
