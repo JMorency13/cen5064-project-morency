@@ -1,11 +1,20 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const fs = require('fs');
 
 let dbInstance = null;
 
 function getDb() {
   if (!dbInstance) {
     const dbPath = process.env.DATABASE_FILE || path.join(__dirname, '../../data/events.db');
+    const dbDir = path.dirname(dbPath);
+    
+    // Create data directory if it doesn't exist
+    if (!fs.existsSync(dbDir)) {
+      fs.mkdirSync(dbDir, { recursive: true });
+      console.log('Created data directory at:', dbDir);
+    }
+    
     dbInstance = new sqlite3.Database(dbPath, (err) => {
       if (err) {
         console.error('Error opening database:', err.message);
