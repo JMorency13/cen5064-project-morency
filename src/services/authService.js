@@ -6,10 +6,18 @@ const {
 } = require('crypto');
 const { promisify } = require('util');
 const userStore = require('../data/userStore');
+const userStoreDb = require('../data/userStoreDb');
 
 const scryptAsync = promisify(scrypt);
 const SESSION_DURATION_MS = 8 * 60 * 60 * 1000;
 const sessions = new Map();
+
+// Use database in production, JSON store in tests
+// Check environment variable set by server.js instead of unreliable require.main
+const isTest = process.env.NODE_ENV === 'test' || !process.env.USE_DATABASE;
+const activeUserStore = isTest ? userStore : userStoreDb;
+
+console.log(`[AuthService] isTest: ${isTest}, activeUserStore: ${isTest ? 'userStore (JSON)' : 'userStoreDb (database)'}`);
 
 function toPublicUser(user) {
   return {
@@ -59,7 +67,7 @@ async function register(name, email, password, role) {
   }
 
   const normalizedEmail = email.trim().toLowerCase();
-  if (await userStore.findByEmail(normalizedEmail)) {
+  if (await activeUserStore.findByEmail(normalizedEmail)) {
     return buildErrorResponse('An account with that email already exists', 409);
   }
   const salt = randomBytes(16);
@@ -71,7 +79,7 @@ async function register(name, email, password, role) {
     salt,
     passwordHash: await scryptAsync(password, salt, 64)
   };
-  if (!userStore.save(user)) {
+  if (!await activeUserStore.save(user)) {
     return buildErrorResponse('An account with that email already exists', 409);
   }
   return createSession(user, 201);
@@ -82,7 +90,7 @@ async function login(email, password) {
     return buildErrorResponse('Email and password are required', 400);
   }
 
-  const user = await userStore.findByEmail(email);
+  const user = await activeUserStore.findByEmail(email);
   if (!user) {
     return buildErrorResponse('Invalid email or password', 401);
   }

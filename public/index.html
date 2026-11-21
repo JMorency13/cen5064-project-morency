@@ -5,16 +5,577 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Event Management System</title>
   <style>
-    body { font-family: sans-serif; max-width: 760px; margin: 2rem auto; padding: 0 1rem; }
-    label { display: block; margin: .5rem 0; }
-    input, textarea, select { padding: .3rem; width: 100%; box-sizing: border-box; }
-    button { padding: .5rem 1rem; margin: .5rem .3rem .5rem 0; }
-    #message, #login-message, #register-message { margin: 1rem 0; padding: .6rem; border-radius: 4px; display: none; }
-    #message.ok, #login-message.ok, #register-message.ok { background: #d9f7d9; display: block; }
-    #message.error, #login-message.error, #register-message.error { background: #fbdada; display: block; }
-    table { width: 100%; border-collapse: collapse; margin-top: .5rem; }
-    th, td { border-bottom: 1px solid #ccc; padding: .4rem; text-align: left; }
+    :root {
+      --primary: #4f46e5;
+      --primary-dark: #4338ca;
+      --secondary: #06b6d4;
+      --danger: #ef4444;
+      --success: #10b981;
+      --gray-50: #f9fafb;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-300: #d1d5db;
+      --gray-700: #374151;
+      --gray-900: #111827;
+    }
+
+    * { 
+      margin: 0; 
+      padding: 0; 
+      box-sizing: border-box; 
+    }
+
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      min-height: 100vh;
+      color: var(--gray-900);
+      line-height: 1.6;
+    }
+
+    main, section { max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
+
+    h1 { 
+      text-align: center; 
+      color: var(--primary); 
+      margin-bottom: 1rem;
+      font-size: 2.5rem;
+      font-weight: 700;
+    }
+
+    h2 { 
+      color: var(--primary);
+      margin-top: 1.5rem;
+      margin-bottom: 1rem;
+      font-size: 1.5rem;
+    }
+
+    #session-loading {
+      text-align: center;
+      padding: 2rem;
+      font-size: 1.1rem;
+      color: var(--gray-700);
+    }
+
+    section#login-section, section#register-section, section#account-section {
+      background: white;
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      max-width: 500px;
+      margin: 2rem auto;
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    label {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      font-weight: 500;
+      color: var(--gray-700);
+    }
+
+    input, textarea, select {
+      padding: 0.75rem;
+      border: 2px solid var(--gray-200);
+      border-radius: 8px;
+      font-size: 1rem;
+      font-family: inherit;
+      transition: all 0.3s ease;
+    }
+
+    input:focus, textarea:focus, select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+
+    button {
+      padding: 0.75rem 1.5rem;
+      margin-right: 0.5rem;
+      margin-bottom: 0.5rem;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      background: var(--primary);
+      color: white;
+    }
+
+    button:hover {
+      background: var(--primary-dark);
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(79, 70, 229, 0.3);
+    }
+
+    button:disabled {
+      background: var(--gray-300);
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    button#cancel-edit, button#close-attendees, button#show-login, button#show-register {
+      background: var(--gray-300);
+      color: var(--gray-900);
+    }
+
+    button#cancel-edit:hover, button#close-attendees:hover {
+      background: var(--gray-400);
+    }
+
+    button#load-notifications {
+      background: var(--secondary);
+    }
+
+    button#load-notifications:hover {
+      background: #0891b2;
+    }
+
+    .message-container {
+      margin: 1rem 0;
+      padding: 1rem;
+      border-radius: 8px;
+      display: none;
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .message-container.ok {
+      background: #d1fae5;
+      border: 2px solid var(--success);
+      color: #065f46;
+      display: block;
+    }
+
+    .message-container.error {
+      background: #fee2e2;
+      border: 2px solid var(--danger);
+      color: #7f1d1d;
+      display: block;
+    }
+
+    #message, #login-message, #register-message {
+      @apply message-container;
+    }
+
+    nav {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+    }
+
+    nav button {
+      background: var(--secondary);
+      min-width: 120px;
+    }
+
+    nav button:hover {
+      background: #0891b2;
+    }
+
+    #application {
+      background: white;
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    }
+
+    #application > p {
+      text-align: center;
+      margin-bottom: 1rem;
+      color: var(--gray-700);
+      font-weight: 500;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1.5rem 0;
+      overflow-x: auto;
+      display: block;
+    }
+
+    thead {
+      background: var(--gray-100);
+    }
+
+    th {
+      padding: 1rem;
+      text-align: left;
+      font-weight: 600;
+      color: var(--gray-900);
+      border-bottom: 2px solid var(--gray-200);
+    }
+
+    td {
+      padding: 1rem;
+      border-bottom: 1px solid var(--gray-200);
+      color: var(--gray-700);
+    }
+
+    tr:hover {
+      background: var(--gray-50);
+    }
+
+    td:last-child {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    td:last-child button {
+      margin: 0;
+      padding: 0.5rem 1rem;
+      font-size: 0.9rem;
+    }
+
+    section#organizer-section {
+      background: var(--gray-50);
+      border-left: 4px solid var(--primary);
+      padding: 1.5rem;
+      border-radius: 8px;
+      margin-bottom: 2rem;
+    }
+
+    section#member-section {
+      margin-top: 2rem;
+      padding: 1.5rem;
+      background: var(--gray-50);
+      border-radius: 8px;
+    }
+
+    #attendees-modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: none;
+      z-index: 999;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #attendees-modal-overlay.active {
+      display: flex;
+    }
+
+    #attendees-modal {
+      background: white;
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 500px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+      position: relative;
+      z-index: 1000;
+    }
+
+    #attendees-modal h2 {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    #attendees-modal .close-button {
+      background: transparent;
+      color: var(--gray-700);
+      font-size: 1.5rem;
+      padding: 0;
+      margin: 0;
+      border: none;
+      cursor: pointer;
+      min-width: auto;
+      width: auto;
+    }
+
+    #attendees-modal .close-button:hover {
+      color: var(--primary);
+    }
+
+    #attendees-list {
+      list-style: none;
+      padding: 1rem 0;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    #attendees-list li {
+      padding: 0.75rem 1rem;
+      background: var(--gray-50);
+      margin-bottom: 0.5rem;
+      border-radius: 6px;
+      border-left: 3px solid var(--secondary);
+    }
+
+    #attendees-list li:empty::after {
+      content: 'Loading...';
+      color: var(--gray-500);
+    }
+
+    #event-modal-overlay, #event-details-modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: none;
+      z-index: 999;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #event-modal-overlay[hidden=false], #event-details-modal-overlay[hidden=false] {
+      display: flex;
+    }
+
+    #event-modal-overlay:not([hidden]), #event-details-modal-overlay:not([hidden]) {
+      display: flex !important;
+    }
+
+    #event-modal, #event-details-modal {
+      background: white;
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 600px;
+      width: 90%;
+      max-height: 85vh;
+      overflow-y: auto;
+      position: relative;
+      z-index: 1000;
+    }
+
+    #event-modal h2, #event-details-modal h2 {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+
+    #event-modal .close-button, #event-details-modal .close-button {
+      background: transparent;
+      color: var(--gray-700);
+      font-size: 1.5rem;
+      padding: 0;
+      margin: 0;
+      border: none;
+      cursor: pointer;
+      min-width: auto;
+      width: auto;
+    }
+
+    #event-modal .close-button:hover, #event-details-modal .close-button:hover {
+      color: var(--primary);
+    }
+
+    #event-form {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    #event-form label {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      font-weight: 500;
+    }
+
+    #event-form input, #event-form textarea {
+      padding: 0.75rem;
+      border: 2px solid var(--gray-200);
+      border-radius: 8px;
+      font-size: 1rem;
+    }
+
+    #event-form button[type="submit"], #cancel-edit {
+      background: var(--primary);
+      color: white;
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 8px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+
+    #event-form button[type="submit"]:hover {
+      background: var(--primary-dark);
+    }
+
+    #cancel-edit {
+      background: var(--gray-400);
+    }
+
+    #cancel-edit:hover {
+      background: var(--gray-500);
+    }
+
+    #event-details-content {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .event-detail-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.75rem;
+      background: var(--gray-50);
+      border-radius: 6px;
+      border-left: 3px solid var(--secondary);
+    }
+
+    .event-detail-row strong {
+      color: var(--gray-700);
+    }
+
+    section#account-section {
+      background: white;
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    }
+
+    #notifications {
+      list-style: none;
+      padding: 1rem 0;
+    }
+
+    #notifications li {
+      padding: 1rem;
+      background: var(--gray-50);
+      margin-bottom: 1rem;
+      border-radius: 8px;
+      border-left: 4px solid var(--secondary);
+      color: var(--gray-700);
+    }
+
     [hidden] { display: none !important; }
+
+    #calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 0.5rem;
+    }
+
+    .calendar-day {
+      background: white;
+      border: 1px solid var(--gray-200);
+      border-radius: 8px;
+      padding: 0.75rem;
+      min-height: 120px;
+      overflow-y: auto;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .calendar-day:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      border-color: var(--secondary);
+    }
+
+    .calendar-day.empty {
+      background: var(--gray-50);
+      color: var(--gray-400);
+    }
+
+    .calendar-day.other-month {
+      background: var(--gray-50);
+      opacity: 0.5;
+    }
+
+    .calendar-day.today {
+      background: var(--primary);
+      color: white;
+      font-weight: 600;
+    }
+
+    .calendar-day.today .day-date {
+      color: white;
+    }
+
+    .day-date {
+      font-weight: 600;
+      color: var(--primary);
+      margin-bottom: 0.5rem;
+      font-size: 1rem;
+    }
+
+    .calendar-day.today .day-date {
+      color: white;
+    }
+
+    .calendar-event {
+      background: var(--secondary);
+      color: white;
+      padding: 0.4rem 0.6rem;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      margin-bottom: 0.4rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+
+    .calendar-event:hover {
+      background: #0891b2;
+    }
+
+    .calendar-event.cancelled {
+      background: var(--gray-400);
+      text-decoration: line-through;
+    }
+
+    .day-header {
+      text-align: center;
+      font-weight: 600;
+      padding: 0.75rem;
+      background: var(--gray-100);
+      border-radius: 6px;
+      color: var(--gray-700);
+    }
+
+    @media (max-width: 768px) {
+      h1 { font-size: 1.75rem; }
+      main, section { padding: 0 1rem; }
+      table { font-size: 0.9rem; }
+      th, td { padding: 0.75rem 0.5rem; }
+      button { padding: 0.6rem 1rem; font-size: 0.9rem; }
+      nav { flex-direction: column; }
+      nav button { width: 100%; }
+      #calendar-grid { grid-template-columns: repeat(7, 1fr); gap: 0.25rem; }
+      .calendar-day { min-height: 100px; padding: 0.5rem; font-size: 0.85rem; }
+      .day-date { font-size: 0.9rem; }
+      .calendar-event { font-size: 0.7rem; padding: 0.3rem 0.4rem; }
+    }
   </style>
 </head>
 <body>
@@ -28,7 +589,6 @@
       <label>Password <input id="password" type="password" autocomplete="current-password" required></label>
       <button type="submit">Log in</button>
     </form>
-    <p>Demo accounts: organizer@example.edu / organizer-demo and member@example.edu / member-demo.</p>
     <button id="show-register" type="button">Create account</button>
     <div id="login-message" role="status"></div>
     <button id="retry-session" type="button" hidden>Retry session</button>
@@ -53,48 +613,146 @@
   </section>
 
   <main id="application" hidden>
-    <p>Signed in as <span id="current-user"></span> (<span id="current-role"></span>)</p>
-    <nav aria-label="Account navigation">
-      <button id="show-dashboard" type="button">Dashboard</button>
-      <button id="show-account" type="button">Account</button>
-    </nav>
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 0; border-bottom: 2px solid var(--gray-200); margin-bottom: 2rem;">
+      <h1 style="margin: 0; font-size: 1.5rem;">Events</h1>
+      <div style="display: flex; gap: 1rem; align-items: center;">
+        <span id="current-user" style="color: var(--gray-700); font-weight: 500;"></span>
+        <span id="current-role" hidden></span>
+        <button id="show-account" type="button" style="background: var(--primary); color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 500;">Account</button>
+        <div style="position: relative;">
+          <button id="notifications-btn" type="button" style="background: var(--primary); color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 500;">🔔 Notifications</button>
+          <div id="notifications-popup" hidden style="position: absolute; top: 100%; right: 0; background: white; border: 1px solid var(--gray-200); border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); min-width: 300px; max-width: 400px; max-height: 400px; overflow-y: auto; z-index: 1000; margin-top: 0.5rem;">
+            <ul id="notifications" style="list-style: none; padding: 1rem; margin: 0;"></ul>
+          </div>
+        </div>
+        <button id="show-dashboard" type="button" hidden>Dashboard</button>
+      </div>
+    </div>
     <div id="message" role="status"></div>
+
+    <!-- Attendees Modal -->
+    <div id="attendees-modal-overlay">
+      <section id="attendees-modal">
+        <h2>
+          Event Attendees: <span id="attendees-event-title"></span>
+          <button class="close-button" id="close-attendees" type="button">✕</button>
+        </h2>
+        <p>Attendees: <span id="attendees-count"></span> / <span id="attendees-capacity"></span></p>
+        <ul id="attendees-list"></ul>
+      </section>
+    </div>
+
+    <!-- Create/Edit Event Modal -->
+    <div id="event-modal-overlay" hidden>
+      <section id="event-modal">
+        <h2>
+          <span id="event-modal-title">Create Event</span>
+          <button class="close-button" id="close-event-modal" type="button">✕</button>
+        </h2>
+        <form id="event-form">
+          <div id="event-error-message" style="display: none; background-color: #fee; color: #c00; padding: 0.75rem; border-radius: 4px; margin-bottom: 1rem; border: 1px solid #fcc;"></div>
+          <label>Title <input id="title" required></label>
+          <label>Date <input id="date" type="date" required></label>
+          <label>Start time (EST, events last 1 hour) <input id="time" type="time" required></label>
+          <label>Venue <input id="venue" required></label>
+          <label>Description <textarea id="description"></textarea></label>
+          <label>Capacity <input id="capacity" type="number" min="1" required></label>
+          <div style="display: flex; gap: 1rem;">
+            <button type="submit">Save event</button>
+            <button id="cancel-edit" type="button" hidden>Cancel edit</button>
+          </div>
+        </form>
+      </section>
+    </div>
+
+    <!-- Event Details Modal -->
+    <div id="event-details-modal-overlay" hidden>
+      <section id="event-details-modal">
+        <h2>
+          Event Details
+          <button class="close-button" id="close-event-details" type="button">✕</button>
+        </h2>
+        <div id="event-details-content" style="display: flex; flex-direction: column; gap: 1rem;"></div>
+        <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+          <button id="edit-event-button" type="button" style="background: var(--primary); color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 500;">Edit Event</button>
+          <button id="view-attendees-button" type="button" style="background: var(--secondary); color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 500;">View Attendees</button>
+          <button id="cancel-event-button" type="button" style="background: var(--danger); color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 500;" hidden>Cancel Event</button>
+          <button id="cancel-rsvp-button" type="button" style="background: var(--danger); color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 500;" hidden>Cancel RSVP</button>
+        </div>
+      </section>
+    </div>
 
     <div id="dashboard">
     <section id="organizer-section" hidden>
-      <h2>Manage events</h2>
-      <form id="event-form">
-        <label>Title <input id="title" required></label>
-        <label>Date <input id="date" type="date" required></label>
-        <label>Start time (events last 1 hour) <input id="time" type="time" required></label>
-        <label>Venue <input id="venue" required></label>
-        <label>Description <textarea id="description"></textarea></label>
-        <label>Capacity <input id="capacity" type="number" min="1" required></label>
-        <button type="submit">Create event</button>
-        <button id="cancel-edit" type="button" hidden>Cancel edit</button>
-      </form>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2 style="margin: 0;">Manage events</h2>
+        <button id="create-event-btn" type="button" style="background: var(--success); color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 500;">+ Create Event</button>
+      </div>
+
+      <div id="events-container">
+        <!-- Calendar View (DEFAULT) -->
+        <div style="margin-top: 2rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <button id="prev-month" type="button" style="background: var(--primary); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-weight: 500;">← Previous</button>
+            <h2 id="calendar-month" style="margin: 0; min-width: 200px; text-align: center;"></h2>
+            <button id="next-month" type="button" style="background: var(--primary); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-weight: 500;">Next →</button>
+          </div>
+          <div id="calendar-grid" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.5rem;"></div>
+        </div>
+
+        <!-- Table View (Hidden by default) -->
+        <table id="events-table-view" hidden>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Time</th>
+              <th>Title</th>
+              <th>Venue</th>
+              <th>Capacity</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="events"></tbody>
+        </table>
+      </div>
     </section>
 
-    <h2>Upcoming events</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Date</th>
-          <th>Time</th>
-          <th>Title</th>
-          <th>Venue</th>
-          <th>Capacity</th>
-          <th>Status</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody id="events"></tbody>
-    </table>
-
     <section id="member-section" hidden>
-      <h2>Member notifications</h2>
-      <button id="load-notifications" type="button">Load notifications</button>
-      <ul id="notifications"></ul>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2 style="margin: 0;">Available Events</h2>
+      </div>
+
+      <button id="load-notifications" type="button" hidden>Load notifications</button>
+
+      <div id="member-events-container">
+        <!-- Table View -->
+        <table id="member-events-table-view">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Time</th>
+              <th>Title</th>
+              <th>Venue</th>
+              <th>Capacity</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="member-events"></tbody>
+        </table>
+      </div>
+
+      <!-- Member Calendar (Always visible) -->
+      <div id="member-calendar-view" style="margin-top: 3rem;">
+        <h2 style="margin-bottom: 1rem;">Your RSVP'd Events</h2>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+          <button id="member-prev-month" type="button" style="background: var(--primary); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-weight: 500;">← Previous</button>
+          <h3 id="member-calendar-month" style="margin: 0; min-width: 200px; text-align: center;"></h3>
+          <button id="member-next-month" type="button" style="background: var(--primary); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-weight: 500;">Next →</button>
+        </div>
+        <div id="member-calendar-grid" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.5rem;"></div>
+      </div>
     </section>
     </div>
 
@@ -124,6 +782,9 @@
     let currentUser = null;
     let editingEventId = null;
 
+    // Use sessionStorage for separate browser windows, fallback to localStorage for tests
+    const storage = typeof sessionStorage !== 'undefined' ? sessionStorage : (typeof localStorage !== 'undefined' ? localStorage : {});
+
     function showMessage(element, text, success) {
       element.textContent = text;
       element.className = success ? 'ok' : 'error';
@@ -152,7 +813,7 @@
       token = null;
       currentUser = null;
       try {
-        localStorage.removeItem(tokenKey);
+        storage.removeItem(tokenKey);
       } catch (error) {
         reason = `${reason} Unable to clear the saved session from this browser.`.trim();
       }
@@ -215,7 +876,7 @@
       loginSection.hidden = true;
       retrySession.hidden = true;
       try {
-        token = localStorage.getItem(tokenKey);
+        token = storage.getItem(tokenKey);
         if (!token) {
           setLoggedOut();
           return;
@@ -232,9 +893,335 @@
       }
     }
 
+    let calendarCurrentDate = new Date();
+    let memberCalendarCurrentDate = new Date();
+    let allEvents = [];
+
+    function renderCalendar() {
+      const grid = document.getElementById('calendar-grid');
+      const monthLabel = document.getElementById('calendar-month');
+      if (!grid || !monthLabel) return; // Skip calendar rendering if elements not present (e.g., in test environment)
+      
+      const year = calendarCurrentDate.getFullYear();
+      const month = calendarCurrentDate.getMonth();
+      
+      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'];
+      
+      monthLabel.textContent = `${monthNames[month]} ${year}`;
+
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+      const daysInMonth = lastDay.getDate();
+      const startingDayOfWeek = firstDay.getDay();
+
+      grid.replaceChildren();
+
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      for (const day of dayNames) {
+        const header = document.createElement('div');
+        header.className = 'day-header';
+        header.textContent = day;
+        grid.appendChild(header);
+      }
+
+      for (let i = 0; i < startingDayOfWeek; i++) {
+        const emptyDay = document.createElement('div');
+        emptyDay.className = 'calendar-day other-month empty';
+        grid.appendChild(emptyDay);
+      }
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dayCell = document.createElement('div');
+        dayCell.className = 'calendar-day';
+        
+        const cellDate = new Date(year, month, day);
+        const dateStr = cellDate.toISOString().split('T')[0];
+        
+        const today = new Date();
+        if (cellDate.toDateString() === today.toDateString()) {
+          dayCell.classList.add('today');
+        }
+
+        const dateDiv = document.createElement('div');
+        dateDiv.className = 'day-date';
+        dateDiv.textContent = day;
+        dayCell.appendChild(dateDiv);
+
+        const dayEvents = allEvents.filter(e => e.date === dateStr);
+        
+        for (const event of dayEvents) {
+          const eventDiv = document.createElement('div');
+          eventDiv.className = 'calendar-event';
+          if (event.status === 'cancelled') {
+            eventDiv.classList.add('cancelled');
+          }
+          eventDiv.textContent = event.title;
+          eventDiv.style.cursor = 'pointer';
+          eventDiv.addEventListener('click', (e) => {
+            e.stopPropagation();
+            // Show event details modal for organizers
+            if (currentUser && currentUser.role === 'organizer') {
+              currentEventBeingViewed = event;
+              document.getElementById('event-details-content').innerHTML = formatEventDetails(event);
+              document.getElementById('cancel-event-button').hidden = event.status === 'cancelled';
+              document.getElementById('event-details-modal-overlay').removeAttribute('hidden');
+              document.getElementById('event-details-modal-overlay').style.display = 'flex';
+            }
+          });
+          dayCell.appendChild(eventDiv);
+        }
+
+        grid.appendChild(dayCell);
+      }
+    }
+
+    function renderMemberCalendar() {
+      const grid = document.getElementById('member-calendar-grid');
+      const monthLabel = document.getElementById('member-calendar-month');
+      if (!grid || !monthLabel) return; // Skip if elements not present
+
+      const year = memberCalendarCurrentDate.getFullYear();
+      const month = memberCalendarCurrentDate.getMonth();
+
+      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'];
+
+      monthLabel.textContent = `${monthNames[month]} ${year}`;
+
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+      const daysInMonth = lastDay.getDate();
+      const startingDayOfWeek = firstDay.getDay();
+
+      grid.replaceChildren();
+
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      for (const day of dayNames) {
+        const header = document.createElement('div');
+        header.style.fontWeight = 'bold';
+        header.style.padding = '0.5rem';
+        header.style.textAlign = 'center';
+        header.textContent = day;
+        grid.appendChild(header);
+      }
+
+      for (let i = 0; i < startingDayOfWeek; i++) {
+        grid.appendChild(document.createElement('div'));
+      }
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dayCell = document.createElement('div');
+        dayCell.style.border = '1px solid #e5e7eb';
+        dayCell.style.padding = '0.5rem';
+        dayCell.style.minHeight = '100px';
+        dayCell.style.overflowY = 'auto';
+        dayCell.style.cursor = 'pointer';
+        dayCell.style.backgroundColor = '#fafafa';
+
+        const dateLabel = document.createElement('div');
+        dateLabel.style.fontWeight = 'bold';
+        dateLabel.style.marginBottom = '0.25rem';
+        dateLabel.textContent = day.toString();
+        dayCell.appendChild(dateLabel);
+
+        const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        
+        // Show only events the member has RSVP'd to
+        const memberEvents = allEvents.filter(event => {
+          const rsvps = Array.isArray(event.rsvps) ? event.rsvps : [];
+          return event.date === dateString && rsvps.includes(currentUser?.id);
+        });
+
+        for (const event of memberEvents) {
+          const eventDiv = document.createElement('div');
+          eventDiv.style.backgroundColor = '#d1fae5';
+          eventDiv.style.border = '1px solid #10b981';
+          eventDiv.style.borderRadius = '4px';
+          eventDiv.style.padding = '0.25rem 0.5rem';
+          eventDiv.style.marginTop = '0.25rem';
+          eventDiv.style.fontSize = '0.85rem';
+          eventDiv.style.cursor = 'pointer';
+          eventDiv.textContent = event.title;
+          eventDiv.addEventListener('click', (e) => {
+            e.stopPropagation();
+            // Show event details modal for members
+            currentEventBeingViewed = event;
+            document.getElementById('event-details-content').innerHTML = formatEventDetails(event);
+            document.getElementById('edit-event-button').hidden = true;
+            document.getElementById('view-attendees-button').hidden = true;
+            document.getElementById('cancel-event-button').hidden = true;
+            document.getElementById('cancel-rsvp-button').hidden = false;
+            document.getElementById('event-details-modal-overlay').removeAttribute('hidden');
+            document.getElementById('event-details-modal-overlay').style.display = 'flex';
+          });
+          dayCell.appendChild(eventDiv);
+        }
+
+        grid.appendChild(dayCell);
+      }
+    }
+
+    // Helper function to convert time to EST
+    function convertToEST(timeString) {
+      if (!timeString) return '';
+      const [hours, minutes] = timeString.split(':');
+      return `${hours}:${minutes} EST`;
+    }
+
+    // Helper function to format event details
+    function formatEventDetails(event) {
+      const rsvps = Array.isArray(event.rsvps) ? event.rsvps : [];
+      const details = [];
+      details.push(`<div class="event-detail-row"><strong>Title:</strong> <span>${event.title}</span></div>`);
+      details.push(`<div class="event-detail-row"><strong>Date:</strong> <span>${event.date}</span></div>`);
+      details.push(`<div class="event-detail-row"><strong>Time:</strong> <span>${convertToEST(event.time)}</span></div>`);
+      details.push(`<div class="event-detail-row"><strong>Venue:</strong> <span>${event.venue}</span></div>`);
+      details.push(`<div class="event-detail-row"><strong>Description:</strong> <span>${event.description || 'No description'}</span></div>`);
+      details.push(`<div class="event-detail-row"><strong>Attendees:</strong> <span>${rsvps.length}/${event.capacity}</span></div>`);
+      details.push(`<div class="event-detail-row"><strong>Status:</strong> <span>${event.status}</span></div>`);
+      return details.join('');
+    }
+
+    // Handle Create Event button
+    document.getElementById('create-event-btn')?.addEventListener('click', () => {
+      editingEventId = null;
+      eventForm.reset();
+      document.getElementById('event-modal-title').textContent = 'Create Event';
+      document.getElementById('cancel-edit').hidden = true;
+      document.getElementById('event-modal-overlay').removeAttribute('hidden');
+      document.getElementById('event-modal-overlay').style.display = 'flex';
+    });
+
+    // Handle Close Event Modal
+    document.getElementById('close-event-modal')?.addEventListener('click', () => {
+      document.getElementById('event-modal-overlay').setAttribute('hidden', '');
+      document.getElementById('event-modal-overlay').style.display = 'none';
+    });
+
+    // Handle Close Event Details Modal
+    document.getElementById('close-event-details')?.addEventListener('click', () => {
+      document.getElementById('event-details-modal-overlay').setAttribute('hidden', '');
+      document.getElementById('event-details-modal-overlay').style.display = 'none';
+    });
+
+    // Global variable to store current event being viewed
+    let currentEventBeingViewed = null;
+
+    // Handle Edit Event from details modal
+    document.getElementById('edit-event-button')?.addEventListener('click', () => {
+      if (currentEventBeingViewed) {
+        editingEventId = currentEventBeingViewed.id;
+        document.getElementById('event-modal-title').textContent = 'Edit Event';
+        for (const field of ['title', 'date', 'time', 'venue', 'description', 'capacity']) {
+          document.getElementById(field).value = currentEventBeingViewed[field] || '';
+        }
+        document.getElementById('cancel-edit').hidden = false;
+        document.getElementById('event-modal-overlay').removeAttribute('hidden');
+        document.getElementById('event-modal-overlay').style.display = 'flex';
+        document.getElementById('event-details-modal-overlay').setAttribute('hidden', '');
+        document.getElementById('event-details-modal-overlay').style.display = 'none';
+      }
+    });
+
+    // Handle View Attendees from details modal
+    document.getElementById('view-attendees-button')?.addEventListener('click', async () => {
+      if (currentEventBeingViewed) {
+        try {
+          const result = await api(`/api/events/${encodeURIComponent(currentEventBeingViewed.id)}/attendees`);
+          document.getElementById('attendees-event-title').textContent = result.data.eventTitle;
+          document.getElementById('attendees-count').textContent = result.data.attendeeCount;
+          document.getElementById('attendees-capacity').textContent = result.data.capacity;
+          const attendeesList = document.getElementById('attendees-list');
+          attendeesList.replaceChildren();
+          if (result.data.attendees.length === 0) {
+            const li = document.createElement('li');
+            li.textContent = 'No attendees yet';
+            attendeesList.appendChild(li);
+          } else {
+            for (const attendee of result.data.attendees) {
+              const li = document.createElement('li');
+              li.textContent = attendee.name;
+              attendeesList.appendChild(li);
+            }
+          }
+          const overlay = document.getElementById('attendees-modal-overlay');
+          if (overlay) overlay.classList.add('active');
+          document.getElementById('event-details-modal-overlay').setAttribute('hidden', '');
+          document.getElementById('event-details-modal-overlay').style.display = 'none';
+        } catch (error) {
+          if (error.status !== 401) showMessage(message, error.message, false);
+        }
+      }
+    });
+
+    // Handle Cancel Event from details modal
+    document.getElementById('cancel-event-button')?.addEventListener('click', async () => {
+      if (currentEventBeingViewed && currentEventBeingViewed.status !== 'cancelled') {
+        if (!window.confirm(`Cancel "${currentEventBeingViewed.title}"? Members who RSVP'd will be notified.`)) return;
+        try {
+          await api(`/api/events/${encodeURIComponent(currentEventBeingViewed.id)}/cancel`, { method: 'POST' });
+          if (editingEventId === currentEventBeingViewed.id) resetEventForm();
+          await loadEvents();
+          showMessage(message, `Cancelled "${currentEventBeingViewed.title}".`, true);
+          document.getElementById('event-details-modal-overlay').setAttribute('hidden', '');
+          document.getElementById('event-details-modal-overlay').style.display = 'none';
+        } catch (error) {
+          if (error.status !== 401) showMessage(message, error.message, false);
+        }
+      }
+    });
+
+    // Handle Cancel RSVP from details modal
+    document.getElementById('cancel-rsvp-button')?.addEventListener('click', async () => {
+      if (currentEventBeingViewed) {
+        if (!window.confirm(`Leave "${currentEventBeingViewed.title}"? Your RSVP will be cancelled.`)) return;
+        try {
+          await api(`/api/events/${encodeURIComponent(currentEventBeingViewed.id)}/rsvp`, { method: 'DELETE' });
+          await loadEvents();
+          showMessage(message, `Cancelled your RSVP for "${currentEventBeingViewed.title}".`, true);
+          document.getElementById('event-details-modal-overlay').setAttribute('hidden', '');
+          document.getElementById('event-details-modal-overlay').style.display = 'none';
+          renderMemberCalendar(); // Refresh calendar to remove event
+        } catch (error) {
+          if (error.status !== 401) showMessage(message, error.message, false);
+        }
+      }
+    });
+
+    document.getElementById('prev-month').addEventListener('click', () => {
+      calendarCurrentDate.setMonth(calendarCurrentDate.getMonth() - 1);
+      renderCalendar();
+    });
+
+    document.getElementById('next-month').addEventListener('click', () => {
+      calendarCurrentDate.setMonth(calendarCurrentDate.getMonth() + 1);
+      renderCalendar();
+    });
+
+    // Member calendar navigation
+    const memberPrevBtn = document.getElementById('member-prev-month');
+    if (memberPrevBtn) {
+      memberPrevBtn.addEventListener('click', () => {
+        memberCalendarCurrentDate.setMonth(memberCalendarCurrentDate.getMonth() - 1);
+        renderMemberCalendar();
+      });
+    }
+
+    const memberNextBtn = document.getElementById('member-next-month');
+    if (memberNextBtn) {
+      memberNextBtn.addEventListener('click', () => {
+        memberCalendarCurrentDate.setMonth(memberCalendarCurrentDate.getMonth() + 1);
+        renderMemberCalendar();
+      });
+    }
+
     async function loadEvents() {
       const body = await api('/api/events');
+      allEvents = body.data.events;
       eventsBody.replaceChildren();
+      const memberEventsBody = document.getElementById('member-events');
+      if (memberEventsBody) memberEventsBody.replaceChildren();
 
       for (const event of body.data.events) {
         const rsvps = Array.isArray(event.rsvps) ? event.rsvps : [];
@@ -253,17 +1240,52 @@
         }
 
         const actions = document.createElement('td');
-        if (currentUser.role === 'organizer') {
+        if (currentUser && currentUser.role === 'organizer') {
+          const viewAttendeesButton = document.createElement('button');
+          viewAttendeesButton.type = 'button';
+          viewAttendeesButton.textContent = 'Attendees';
+          viewAttendeesButton.addEventListener('click', async () => {
+            try {
+              const result = await api(`/api/events/${encodeURIComponent(event.id)}/attendees`);
+              document.getElementById('attendees-event-title').textContent = result.data.eventTitle;
+              document.getElementById('attendees-count').textContent = result.data.attendeeCount;
+              document.getElementById('attendees-capacity').textContent = result.data.capacity;
+              const attendeesList = document.getElementById('attendees-list');
+              attendeesList.replaceChildren();
+              if (result.data.attendees.length === 0) {
+                const li = document.createElement('li');
+                li.textContent = 'No attendees yet';
+                attendeesList.appendChild(li);
+              } else {
+                for (const attendee of result.data.attendees) {
+                  const li = document.createElement('li');
+                  li.textContent = attendee.name;
+                  attendeesList.appendChild(li);
+                }
+              }
+              const overlay = document.getElementById('attendees-modal-overlay');
+              if (overlay) overlay.classList.add('active');
+            } catch (error) {
+              if (error.status !== 401) showMessage(message, error.message, false);
+            }
+          });
+          actions.appendChild(viewAttendeesButton);
+
           const editButton = document.createElement('button');
           editButton.type = 'button';
           editButton.textContent = 'Edit';
           editButton.addEventListener('click', () => {
             editingEventId = event.id;
             for (const field of ['title', 'date', 'time', 'venue', 'description', 'capacity']) {
-              document.getElementById(field).value = event[field] || '';
+              const el = document.getElementById(field);
+              if (el) el.value = event[field] || '';
             }
-            eventForm.querySelector('button[type="submit"]').textContent = 'Update event';
-            document.getElementById('cancel-edit').hidden = false;
+            if (eventForm) {
+              const submitBtn = eventForm.querySelector('button[type="submit"]');
+              if (submitBtn) submitBtn.textContent = 'Update event';
+            }
+            const cancelEditBtn = document.getElementById('cancel-edit');
+            if (cancelEditBtn) cancelEditBtn.hidden = false;
           });
           actions.appendChild(editButton);
           if (event.status !== 'cancelled') {
@@ -288,8 +1310,8 @@
         } else {
           const rsvpButton = document.createElement('button');
           rsvpButton.type = 'button';
-          rsvpButton.textContent = rsvps.includes(currentUser.id) ? 'RSVP’d' : 'RSVP';
-          rsvpButton.disabled = rsvps.includes(currentUser.id) || event.status !== 'open';
+          rsvpButton.textContent = rsvps.includes(currentUser?.id) ? 'RSVP\'d' : 'RSVP';
+          rsvpButton.disabled = rsvps.includes(currentUser?.id) || event.status !== 'open';
           rsvpButton.addEventListener('click', async () => {
             try {
               await api(`/api/events/${encodeURIComponent(event.id)}/rsvp`, { method: 'POST' });
@@ -303,6 +1325,49 @@
         }
         row.appendChild(actions);
         eventsBody.appendChild(row);
+
+        // For members, also populate the UI table with only available events (not yet RSVP'd)
+        if (currentUser && currentUser.role === 'member' && !rsvps.includes(currentUser.id) && event.status !== 'cancelled') {
+          const memberRow = document.createElement('tr');
+          for (const value of [
+            event.date,
+            event.time,
+            event.title,
+            event.venue,
+            `${rsvps.length}/${event.capacity}`,
+            event.status
+          ]) {
+            const cell = document.createElement('td');
+            cell.textContent = value;
+            memberRow.appendChild(cell);
+          }
+
+          const memberActions = document.createElement('td');
+          const rsvpButton = document.createElement('button');
+          rsvpButton.type = 'button';
+          rsvpButton.textContent = 'RSVP';
+          rsvpButton.disabled = event.status !== 'open';
+          rsvpButton.addEventListener('click', async () => {
+            try {
+              await api(`/api/events/${encodeURIComponent(event.id)}/rsvp`, { method: 'POST' });
+              showMessage(message, `RSVP confirmed for "${event.title}".`, true);
+              await loadEvents();
+            } catch (error) {
+              showMessage(message, error.message, false);
+            }
+          });
+          memberActions.appendChild(rsvpButton);
+          memberRow.appendChild(memberActions);
+          if (memberEventsBody) memberEventsBody.appendChild(memberRow);
+        }
+      }
+      
+      // Render calendar after loading events
+      try {
+        renderCalendar();
+        renderMemberCalendar();
+      } catch (error) {
+        console.error('Error rendering calendar:', error);
       }
     }
 
@@ -331,7 +1396,7 @@
       token = data.token;
       let storageError = null;
       try {
-        localStorage.setItem(tokenKey, token);
+        storage.setItem(tokenKey, token);
       } catch (error) {
         storageError = error;
       }
@@ -372,8 +1437,40 @@
       }
     });
 
+    // Handle Notifications popup toggle
+    const notificationsBtn = document.getElementById('notifications-btn');
+    const notificationsPopup = document.getElementById('notifications-popup');
+    if (notificationsBtn && notificationsPopup) {
+      notificationsBtn.addEventListener('click', () => {
+        notificationsPopup.hidden = !notificationsPopup.hidden;
+      });
+
+      // Close popup when clicking outside (if document event listener is available)
+      if (document && typeof document.addEventListener === 'function') {
+        document.addEventListener('click', (e) => {
+          if (!notificationsBtn.contains(e.target) && !notificationsPopup.contains(e.target)) {
+            notificationsPopup.hidden = true;
+          }
+        });
+      }
+    }
+
+    document.getElementById('show-account').addEventListener('click', () => {
+      showView(true);
+      // Handle back to dashboard from account section
+      const accountSection = document.getElementById('account-section');
+      let accountBackButton = accountSection.querySelector('[data-back-button="true"]');
+      if (!accountBackButton) {
+        accountBackButton = document.createElement('button');
+        accountBackButton.setAttribute('data-back-button', 'true');
+        accountBackButton.textContent = '← Back to Dashboard';
+        accountBackButton.type = 'button';
+        accountBackButton.style.cssText = 'background: var(--primary); color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 500; margin-bottom: 1rem;';
+        accountBackButton.addEventListener('click', () => showView(false));
+        accountSection.insertBefore(accountBackButton, accountSection.firstChild);
+      }
+    });
     document.getElementById('show-dashboard').addEventListener('click', () => showView(false));
-    document.getElementById('show-account').addEventListener('click', () => showView(true));
     retrySession.addEventListener('click', restoreSession);
 
     function resetEventForm() {
@@ -385,6 +1482,10 @@
 
     eventForm.addEventListener('submit', async (event) => {
       event.preventDefault();
+      const errorDiv = document.getElementById('event-error-message');
+      errorDiv.style.display = 'none';
+      errorDiv.textContent = '';
+
       const payload = {
         title: document.getElementById('title').value,
         date: document.getElementById('date').value,
@@ -407,12 +1508,20 @@
         showMessage(message, `${action} "${result.data.title}".`, true);
         resetEventForm();
         await loadEvents();
+        // Close the event modal after successful submission
+        document.getElementById('event-modal-overlay').setAttribute('hidden', '');
+        document.getElementById('event-modal-overlay').style.display = 'none';
       } catch (error) {
-        showMessage(message, error.message, false);
+        errorDiv.textContent = error.message;
+        errorDiv.style.display = 'block';
       }
     });
 
-    document.getElementById('cancel-edit').addEventListener('click', resetEventForm);
+    document.getElementById('cancel-edit').addEventListener('click', () => {
+      resetEventForm();
+      document.getElementById('event-modal-overlay').setAttribute('hidden', '');
+      document.getElementById('event-modal-overlay').style.display = 'none';
+    });
 
     async function loadNotifications() {
       const result = await api('/api/events/notifications');
@@ -441,6 +1550,24 @@
         if (error.status !== 401) showMessage(message, error.message, false);
       }
     });
+
+    const closeAttendeesBtn = document.getElementById('close-attendees');
+    if (closeAttendeesBtn) {
+      closeAttendeesBtn.addEventListener('click', () => {
+        const overlay = document.getElementById('attendees-modal-overlay');
+        if (overlay) overlay.classList.remove('active');
+      });
+    }
+
+    // Close modal when clicking on overlay background
+    const attendeesOverlay = document.getElementById('attendees-modal-overlay');
+    if (attendeesOverlay) {
+      attendeesOverlay.addEventListener('click', (e) => {
+        if (e.target.id === 'attendees-modal-overlay') {
+          document.getElementById('attendees-modal-overlay').classList.remove('active');
+        }
+      });
+    }
 
     restoreSession();
   </script>
