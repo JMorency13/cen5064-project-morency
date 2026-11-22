@@ -94,6 +94,14 @@ async function findByEmail(email) {
   return [...demoUsers, ...registeredUsers].find((user) => user.email === normalizedEmail) || null;
 }
 
+function findById(id) {
+  return [...demoUsers, ...registeredUsers].find((user) => user.id === id) || null;
+}
+
+function getAllUsers() {
+  return [...demoUsers, ...registeredUsers];
+}
+
 function save(user) {
   if ([...demoUsers, ...registeredUsers].some((existing) => existing.email === user.email)) return false;
   const updatedUsers = [...registeredUsers, user];
@@ -105,5 +113,7 @@ function save(user) {
 module.exports = {
   init,
   findByEmail,
+  findById,
+  getAllUsers,
   save
 };

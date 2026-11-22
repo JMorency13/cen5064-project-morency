@@ -92,7 +92,7 @@ function notificationsForRsvps(event, type, message, createdAt, details = {}) {
   }));
 }
 
-function createEventService({ eventStore }) {
+function createEventService({ eventStore, userStore }) {
   if (
     !eventStore
     || typeof eventStore.findAll !== 'function'
@@ -125,10 +125,41 @@ function createEventService({ eventStore }) {
       return precheckError;
     }
 
-    const event = buildEventPayload(eventData, organizerId);
-    await eventStore.save(event);
+    if (!organizerId) {
+      return buildErrorResponse('Organizer ID is required', 401);
+    }
 
-    return buildSuccessResponse(event);
+    // Verify organizer exists in the database before creating event
+    if (userStore && typeof userStore.findByIdAsync === 'function') {
+      try {
+        const organizer = await userStore.findByIdAsync(organizerId);
+        if (!organizer) {
+          return buildErrorResponse(
+            'Organizer account not found. Please sign out and sign in again.',
+            401
+          );
+        }
+      } catch (error) {
+        console.error('[EventService.createEvent] Error verifying organizer:', error.message);
+      }
+    }
+
+    try {
+      const event = buildEventPayload(eventData, organizerId);
+      await eventStore.save(event);
+      return buildSuccessResponse(event);
+    } catch (error) {
+      console.error('[EventService.createEvent] Error saving event:', error.message);
+      
+      if (error.code === 'SQLITE_CONSTRAINT' && error.message.includes('FOREIGN KEY')) {
+        return buildErrorResponse(
+          'Could not create event. User account may not be fully initialized. Please try again.',
+          500
+        );
+      }
+      
+      return buildErrorResponse(error.message || 'Failed to create event', 500);
+    }
   }
 
   async function updateEvent(eventId, updates, organizerId) {
@@ -216,14 +247,18 @@ function createEventService({ eventStore }) {
       ));
     }
 
-    const savedEvent = await eventStore.update(updatedEvent);
-
-    return {
-      success: true,
-      data: toPublicEvent(savedEvent),
-      error: null,
-      statusCode: 200
-    };
+    try {
+      const savedEvent = await eventStore.update(updatedEvent);
+      return {
+        success: true,
+        data: toPublicEvent(savedEvent),
+        error: null,
+        statusCode: 200
+      };
+    } catch (error) {
+      console.error('[EventService.updateEvent] Error updating event:', error.message);
+      return buildErrorResponse(error.message || 'Failed to update event', 500);
+    }
   }
 
   async function cancelEvent(eventId, organizerId) {
@@ -300,6 +335,38 @@ function createEventService({ eventStore }) {
     return buildRsvpSuccessResponse(savedEvent, 201);
   }
 
+  async function unRsvpForEvent(eventId, memberId) {
+    if (!memberId) {
+      return buildErrorResponse('Member ID is required', 401);
+    }
+
+    const events = await eventStore.findAll();
+    const event = events.find((savedEvent) => savedEvent.id === eventId);
+
+    if (!event) {
+      return buildErrorResponse('Event not found', 404);
+    }
+
+    const rsvps = Array.isArray(event.rsvps) ? event.rsvps : [];
+    if (!rsvps.includes(memberId)) {
+      return buildErrorResponse('You have not RSVP\'d to this event', 400);
+    }
+
+    const updatedRsvps = rsvps.filter((id) => id !== memberId);
+    const updatedEvent = {
+      ...event,
+      rsvps: updatedRsvps,
+      status: updatedRsvps.length >= event.capacity ? 'full' : 'open'
+    };
+    const savedEvent = await eventStore.update(updatedEvent);
+
+    if (!savedEvent) {
+      return buildErrorResponse('Event not found', 404);
+    }
+
+    return buildRsvpSuccessResponse(savedEvent, 200);
+  }
+
   async function getNotificationsForUser(userId) {
     if (!userId) {
       return buildErrorResponse('User ID is required', 400);
@@ -320,12 +387,83 @@ function createEventService({ eventStore }) {
     };
   }
 
+  async function getEventAttendees(eventId, organizerId) {
+    if (!organizerId) {
+      return buildErrorResponse('Organizer ID is required', 401);
+    }
+
+    if (!eventId) {
+      return buildErrorResponse('Event ID is required', 400);
+    }
+
+    const events = await eventStore.findAll();
+    const event = events.find((savedEvent) => savedEvent.id === eventId);
+
+    if (!event) {
+      return buildErrorResponse('Event not found', 404);
+    }
+
+    if (event.createdBy !== organizerId) {
+      return buildErrorResponse(
+        'Only the event organizer can view attendees',
+        403
+      );
+    }
+
+    const attendeeIds = Array.isArray(event.rsvps) ? event.rsvps : [];
+    
+    // Resolve attendee IDs to names using userStore
+    let attendees = [];
+    if (userStore && typeof userStore.findByIdAsync === 'function') {
+      // Use async method for database support
+      attendees = await Promise.all(attendeeIds.map(async (id) => {
+        const user = await userStore.findByIdAsync(id);
+        return {
+          id,
+          name: user ? user.name : 'Unknown User'
+        };
+      }));
+    } else if (userStore && typeof userStore.findById === 'function') {
+      // Fallback to sync method for JSON store
+      attendees = attendeeIds.map((id) => {
+        const user = userStore.findById(id);
+        return {
+          id,
+          name: user ? user.name : 'Unknown User'
+        };
+      });
+    } else {
+      attendees = attendeeIds.map((id) => ({
+        id,
+        name: 'Member'
+      }));
+    }
+
+    // Sort by name
+    attendees.sort((a, b) => a.name.localeCompare(b.name));
+
+    return {
+      success: true,
+      data: {
+        eventId: event.id,
+        eventTitle: event.title,
+        attendeeCount: attendees.length,
+        capacity: event.capacity,
+        attendees
+      },
+      error: null,
+      statusCode: 200
+    };
+  }
+
   return {
     createEvent,
     updateEvent,
     cancelEvent,
     rsvpForEvent,
+    unRsvpForEvent,
     getNotificationsForUser,
+    getEventAttendees,
     validateAndCheckConflicts
   };
 }
